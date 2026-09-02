@@ -48,9 +48,15 @@ export async function GET(
     if (!agent) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
-    
+
     const workItems: any[] = [];
     const now = Math.floor(Date.now() / 1000);
+    const nextStatus = agent.status === 'offline' ? 'idle' : agent.status
+    db.prepare(
+      'UPDATE agents SET last_seen = ?, status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?'
+    ).run(now, nextStatus, now, agent.id, workspaceId)
+    agent.status = nextStatus
+    agent.last_seen = now
     const fourHoursAgo = now - (4 * 60 * 60); // Check last 4 hours
 
     // @mentions are intentionally NOT queried from the `comments` table here.

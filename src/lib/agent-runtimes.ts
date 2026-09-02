@@ -380,16 +380,8 @@ function pruneJobs() {
 
 function detectOpenClaw(): RuntimeStatus {
   const meta = RUNTIME_META.openclaw
-  let installed = false
+  let binary = false
   let version: string | null = null
-  let running = false
-
-  // Check config file existence
-  if (config.openclawConfigPath && existsSync(config.openclawConfigPath)) {
-    installed = true
-  }
-
-  // Try to get version
   try {
     const result = require('node:child_process').spawnSync(
       config.openclawBin || 'openclaw',
@@ -397,31 +389,21 @@ function detectOpenClaw(): RuntimeStatus {
       { stdio: 'pipe', timeout: 3000 }
     )
     if (result.status === 0) {
-      installed = true
+      binary = true
       version = (result.stdout?.toString() || '').trim() || null
     }
   } catch {
-    // binary not found
+    // binary not on PATH
   }
-
-  // Check if gateway port is listening (simple sync check)
-  try {
-    const net = require('node:net')
-    const socket = new net.Socket()
-    socket.setTimeout(500)
-    new Promise<boolean>((resolve) => {
-      socket.once('connect', () => { socket.destroy(); resolve(true) })
-      socket.once('error', () => { socket.destroy(); resolve(false) })
-      socket.once('timeout', () => { socket.destroy(); resolve(false) })
-      socket.connect(config.gatewayPort, config.gatewayHost)
-    })
-    // We can't await here synchronously, so just check config existence for "running"
-    running = installed
-  } catch {
-    // ignore
+  const hasConfig = Boolean(config.openclawConfigPath && existsSync(config.openclawConfigPath))
+  return {
+    id: 'openclaw',
+    ...meta,
+    installed: binary || hasConfig,
+    version,
+    running: binary,
+    authenticated: binary,
   }
-
-  return { id: 'openclaw', ...meta, installed, version, running, authenticated: true }
 }
 
 function detectHermes(): RuntimeStatus {

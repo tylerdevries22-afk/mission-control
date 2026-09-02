@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url)
-    const action = searchParams.get('action')
+    const action = searchParams.get('action') || 'list'
 
     if (action === 'list') {
       const cronFile = await loadCronFile()

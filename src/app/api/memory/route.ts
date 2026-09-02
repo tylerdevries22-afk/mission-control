@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const path = searchParams.get('path')
-    const action = searchParams.get('action')
+    const action = searchParams.get('action') || 'tree'
     const depthParam = Number.parseInt(searchParams.get('depth') || '', 10)
     const maxDepth = Number.isFinite(depthParam) ? Math.max(0, Math.min(depthParam, 8)) : Number.POSITIVE_INFINITY
 

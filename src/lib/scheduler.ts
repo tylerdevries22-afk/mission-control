@@ -182,9 +182,9 @@ async function runHeartbeatCheck(): Promise<{ ok: boolean; message: string }> {
 
     // Find agents that are not offline but haven't been seen recently
     const staleAgents = db.prepare(`
-      SELECT id, name, status, last_seen, workspace_id FROM agents
+      SELECT id, name, status, last_seen, workspace_id, runtime_type FROM agents
       WHERE status != 'offline' AND (last_seen IS NULL OR last_seen < ?)
-    `).all(threshold) as Array<{ id: number; name: string; status: string; last_seen: number | null; workspace_id: number }>
+    `).all(threshold) as Array<{ id: number; name: string; status: string; last_seen: number | null; workspace_id: number; runtime_type: string | null }>
 
     if (staleAgents.length === 0) {
       return { ok: true, message: 'All agents healthy' }
@@ -192,6 +192,8 @@ async function runHeartbeatCheck(): Promise<{ ok: boolean; message: string }> {
 
     // Mark stale agents as offline
     const markOffline = db.prepare('UPDATE agents SET status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?')
+    const keepLocal = db.prepare('UPDATE agents SET last_seen = ?, status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?')
+    const localRuntimes = new Set(['claude', 'codex', 'custom'])
     const logActivity = db.prepare(`
       INSERT INTO activities (type, entity_type, entity_id, actor, description, workspace_id)
       VALUES ('agent_status_change', 'agent', ?, 'heartbeat', ?, ?)
@@ -200,6 +202,10 @@ async function runHeartbeatCheck(): Promise<{ ok: boolean; message: string }> {
     const names: string[] = []
     db.transaction(() => {
       for (const agent of staleAgents) {
+        if (localRuntimes.has(String(agent.runtime_type || '').toLowerCase())) {
+          keepLocal.run(now, agent.status === 'offline' ? 'idle' : agent.status, now, agent.id, agent.workspace_id)
+          continue
+        }
         markOffline.run('offline', now, agent.id, agent.workspace_id)
         logActivity.run(agent.id, `Agent "${agent.name}" marked offline (no heartbeat for ${timeoutMinutes}m)`, agent.workspace_id)
         names.push(agent.name)
@@ -225,7 +231,10 @@ async function runHeartbeatCheck(): Promise<{ ok: boolean; message: string }> {
       detail: { marked_offline_count: names.length },
     })
 
-    return { ok: true, message: `Marked ${staleAgents.length} agent(s) offline: ${names.join(', ')}` }
+    if (names.length === 0) {
+      return { ok: true, message: 'Local CLI agents kept idle' }
+    }
+    return { ok: true, message: `Marked ${names.length} agent(s) offline: ${names.join(', ')}` }
   } catch (err: any) {
     return { ok: false, message: `Heartbeat check failed: ${err.message}` }
   }

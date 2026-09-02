@@ -20,6 +20,13 @@ const log = createClientLogger('AgentDetailTabs')
  * `payload.error` to preserve the original user-facing message, then fall back
  * to the ApiError message, then any other thrown Error message.
  */
+function formatUnixDate(value?: number | null): string {
+  if (!value || !Number.isFinite(value)) return '—'
+  const ms = value > 1e12 ? value : value * 1000
+  const date = new Date(ms)
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString()
+}
+
 function extractApiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
     const payload = err.payload
@@ -272,11 +279,11 @@ export function OverviewTab({
 
             <div className="grid grid-cols-[100px_1fr] gap-2 items-center text-sm">
               <span className="text-muted-foreground">{t('created')}</span>
-              <span className="text-xs text-muted-foreground">{new Date(agent.created_at * 1000).toLocaleDateString()}</span>
+              <span className="text-xs text-muted-foreground">{formatUnixDate(agent.created_at)}</span>
             </div>
             <div className="grid grid-cols-[100px_1fr] gap-2 items-center text-sm">
               <span className="text-muted-foreground">{t('updated')}</span>
-              <span className="text-xs text-muted-foreground">{new Date(agent.updated_at * 1000).toLocaleDateString()}</span>
+              <span className="text-xs text-muted-foreground">{formatUnixDate(agent.updated_at)}</span>
             </div>
           </div>
 

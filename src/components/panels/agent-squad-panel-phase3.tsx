@@ -478,7 +478,7 @@ export function AgentSquadPanelPhase3() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {agents.map(agent => {
+            {agents.filter((agent) => agent?.id && agent?.name).map(agent => {
               const modelName = formatModelName(agent.config)
               const taskStatsLine = buildTaskStatParts(agent.taskStats)
 
@@ -565,7 +565,6 @@ export function AgentSquadPanelPhase3() {
                             e.stopPropagation()
                             updateAgentStatus(agent.name, 'idle', 'Manually activated')
                           }}
-                          disabled={agent.status === 'idle'}
                           size="xs"
                           variant="ghost"
                           className="h-6 px-2 text-xs"
@@ -810,6 +809,7 @@ function AgentDetailModalPhase3({
       if (response.ok) {
         const data = await response.json()
         setHeartbeatData(data)
+        onUpdate()
       }
     } catch (error) {
       log.error('Failed to perform heartbeat:', error)
@@ -1220,14 +1220,23 @@ function QuickSpawnModal({
       if (response.ok) {
         setSpawnResult(result)
         onSpawned()
-
-        // Auto-close after 2 seconds if successful
-        setTimeout(() => {
-          onClose()
-        }, 2000)
-      } else {
-        alert(result.error || 'Failed to spawn agent')
+        setTimeout(() => onClose(), 2000)
+        return
       }
+      const taskRes = await apiFetch<{ task?: { id: number } }>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: spawnData.task,
+          assigned_to: agent.name,
+          created_by: agent.name,
+          status: 'assigned',
+          priority: 'medium',
+        }),
+        redirectOnUnauthenticated: false,
+      })
+      setSpawnResult({ fallback: 'task', task: taskRes.task })
+      onSpawned()
+      setTimeout(() => onClose(), 2000)
     } catch (error) {
       log.error('Spawn failed:', error)
       alert('Network error occurred')
