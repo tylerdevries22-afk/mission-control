@@ -145,7 +145,7 @@ export function AgentSquadPanelPhase3() {
       }
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Sync failed')
-      if (source === 'local') {
+      if (source === 'local' || data.fallback === 'local') {
         setSyncToast(data.message || 'Local agent sync complete')
       } else {
         setSyncToast(`Synced ${data.synced} agents (${data.created} new, ${data.updated} updated)`)

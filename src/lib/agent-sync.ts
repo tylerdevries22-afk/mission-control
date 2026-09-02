@@ -195,9 +195,14 @@ async function readOpenClawAgents(): Promise<OpenClawAgent[]> {
   if (!configPath) throw new Error('OPENCLAW_CONFIG_PATH not configured')
 
   const { readFile } = require('fs/promises')
-  const raw = await readFile(configPath, 'utf-8')
-  const parsed = parseJsonRelaxed<any>(raw)
-  return parsed?.agents?.list || []
+  try {
+    const raw = await readFile(configPath, 'utf-8')
+    const parsed = parseJsonRelaxed<any>(raw)
+    return parsed?.agents?.list || []
+  } catch (err: any) {
+    if (err?.code === 'ENOENT') return []
+    throw err
+  }
 }
 
 /** Extract MC-friendly fields from an OpenClaw agent config */

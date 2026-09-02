@@ -119,6 +119,8 @@ function getLocalAgentRoots(): string[] {
     join(home, '.agents'),
     join(home, '.codex', 'agents'),
     join(home, '.claude', 'agents'),
+    join(home, '.grok', 'agents'),
+    join(home, '.kimi-code', 'agents'),
     join(home, '.hermes', 'skills'),
   ]
 }
@@ -255,9 +257,8 @@ export async function syncLocalAgents(requestedWorkspaceId?: number): Promise<{ 
       diskMap.set(a.name, a)
     }
 
-    // Fetch DB agents with source='local'
     const dbRows = db.prepare(
-      `SELECT id, name, role, soul_content, status, source, content_hash, workspace_path, config FROM agents WHERE source = 'local' AND workspace_id = ?`
+      `SELECT id, name, role, soul_content, status, source, content_hash, workspace_path, config FROM agents WHERE workspace_id = ?`
     ).all(workspaceId) as AgentRow[]
 
     const dbMap = new Map<string, AgentRow>()
@@ -296,8 +297,8 @@ export async function syncLocalAgents(requestedWorkspaceId?: number): Promise<{ 
         }
       }
 
-      // Agents that vanished from disk — mark offline but don't delete
       for (const [name, row] of dbMap) {
+        if (row.source !== 'local') continue
         if (!diskMap.has(name) && row.status !== 'offline') {
           markRemovedStmt.run(now, row.id, workspaceId)
           removed++
