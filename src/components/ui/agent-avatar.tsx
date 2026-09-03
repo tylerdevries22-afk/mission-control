@@ -1,5 +1,8 @@
 'use client'
 
+import { EngineLogo } from '@/components/brand/engine-logo'
+import { inferEngineFromText } from '@/lib/chat-model-groups'
+
 interface AgentAvatarProps {
   name?: string | null
   size?: 'xs' | 'sm' | 'md'
@@ -40,8 +43,22 @@ const sizeClasses: Record<NonNullable<AgentAvatarProps['size']>, string> = {
   md: 'w-8 h-8 text-xs',
 }
 
+const logoSize: Record<NonNullable<AgentAvatarProps['size']>, number> = {
+  xs: 20,
+  sm: 24,
+  md: 32,
+}
+
 export function AgentAvatar({ name, size = 'sm', className = '' }: AgentAvatarProps) {
   const safeName = name ?? ''
+  const engine = inferEngineFromText(safeName)
+  if (engine) {
+    return (
+      <span className={`inline-flex shrink-0 overflow-hidden rounded-[6px] ${sizeClasses[size]} ${className}`} title={safeName} aria-label={safeName || 'Agent'}>
+        <EngineLogo engine={engine} size={logoSize[size]} className="h-full w-full rounded-[6px]" />
+      </span>
+    )
+  }
   const initials = getInitials(safeName)
   const colors = getAvatarColors(safeName)
 
