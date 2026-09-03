@@ -107,7 +107,7 @@ export function MetricCard({ label, value, total, subtitle, icon, color }: {
     <div className={`rounded-lg border p-3.5 ${colorMap[color]}`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium opacity-80">{label}</span>
-        <div className="w-5 h-5 opacity-60">{icon}</div>
+        <div className="flex h-5 w-5 items-center justify-center">{icon}</div>
       </div>
       <div className="flex items-baseline gap-1">
         <span className="text-2xl font-bold font-mono-tight">{value}</span>

@@ -54,3 +54,7 @@ docs/_*.png
 
 # IDE state
 .vs/
+
+# Local agent run artifacts
+.swarm/
+.claude-flow/

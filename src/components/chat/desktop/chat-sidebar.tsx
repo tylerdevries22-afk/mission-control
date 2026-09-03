@@ -3,6 +3,7 @@
 import type { ChatFilterState, SidebarRow } from '@/lib/group-sessions'
 import { ChatNav } from './chat-nav'
 import { ChatProjectList } from './chat-project-list'
+import type { GitLensSessionRow } from './chat-session-row'
 import { ChatUserFooter } from './chat-user-footer'
 
 export function ChatSidebar({
@@ -15,6 +16,16 @@ export function ChatSidebar({
   onNew,
   onNewInGroup,
   onSearch,
+  onNavigate,
+  onCustomize,
+  sessionsByProject,
+  activeSessionId,
+  onSelectSession,
+  pins,
+  onTogglePin,
+  folderOrder,
+  onReorder,
+  now,
 }: {
   pinned: SidebarRow[]
   rest: SidebarRow[]
@@ -25,10 +36,20 @@ export function ChatSidebar({
   onNew: () => void
   onNewInGroup: (row: SidebarRow) => void
   onSearch: (value: string) => void
+  onNavigate: (panel: string) => void
+  onCustomize: () => void
+  sessionsByProject: Record<string, GitLensSessionRow[]>
+  activeSessionId: string | null
+  onSelectSession: (id: string) => void
+  pins: string[]
+  onTogglePin: (slug: string) => void
+  folderOrder?: string[]
+  onReorder?: (next: string[]) => void
+  now?: number
 }) {
   return (
     <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden border-r border-[var(--chat-border)] bg-[var(--chat-sidebar)] md:flex">
-      <ChatNav onNew={onNew} />
+      <ChatNav onNew={onNew} onNavigate={onNavigate} onCustomize={onCustomize} />
       <ChatProjectList
         pinned={pinned}
         rest={rest}
@@ -38,8 +59,18 @@ export function ChatSidebar({
         onSelect={onSelect}
         onNewInGroup={onNewInGroup}
         onSearch={onSearch}
+        sessionsByProject={sessionsByProject}
+        activeSessionId={activeSessionId}
+        onSelectSession={onSelectSession}
+        pins={pins}
+        onTogglePin={onTogglePin}
+        folderOrder={folderOrder}
+        onReorder={onReorder}
+        now={now}
       />
       <ChatUserFooter />
     </aside>
   )
 }
+
+export type { GitLensSessionRow }

@@ -18,6 +18,7 @@ function session(partial: Partial<ChatSessionItem> & Pick<ChatSessionItem, 'id'>
     project: 'actz-may',
     projectSlug: 'actz-may',
     hasPr: false,
+    kind: 'claude-code',
     ...partial,
   }
 }
@@ -33,8 +34,13 @@ describe('filterSessions', () => {
     session({ id: 'b', active: false, name: 'idle work', environment: 'gateway' }),
   ]
 
-  it('keeps only active sessions by default status', () => {
+  it('keeps every session by default status', () => {
     const visible = filterSessions(rows, DEFAULT_CHAT_FILTERS)
+    expect(visible.map((s) => s.id)).toEqual(['a', 'b'])
+  })
+
+  it('filters to active when requested', () => {
+    const visible = filterSessions(rows, { ...DEFAULT_CHAT_FILTERS, status: 'active' })
     expect(visible.map((s) => s.id)).toEqual(['a'])
   })
 

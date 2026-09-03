@@ -5,17 +5,22 @@ import { firstName } from '@/lib/chat-display'
 import { IconSparkle } from '../desktop/chat-icons'
 import { ChatHomeList, type HomeSessionRow } from './chat-home-list'
 import type { ChatPullRequest } from '@/lib/github-pulls'
+import type { ChatGitHubItem } from '../use-chat-github'
 
 export function ChatWelcome({
   displayName,
   sessions,
   pullRequests,
+  activity,
   onSelectSession,
+  now,
 }: {
   displayName: string
   sessions: HomeSessionRow[]
   pullRequests: ChatPullRequest[]
+  activity?: ChatGitHubItem[]
   onSelectSession: (id: string) => void
+  now?: number
 }) {
   const t = useTranslations('chatDesktop')
   return (
@@ -26,7 +31,7 @@ export function ChatWelcome({
           {t('welcomeBack', { name: firstName(displayName) })}
         </h1>
       </div>
-      <ChatHomeList sessions={sessions} pullRequests={pullRequests} onSelectSession={onSelectSession} />
+      <ChatHomeList sessions={sessions} pullRequests={pullRequests} activity={activity} onSelectSession={onSelectSession} now={now} />
     </div>
   )
 }

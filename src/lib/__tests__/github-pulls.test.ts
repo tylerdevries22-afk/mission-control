@@ -45,6 +45,18 @@ describe('mapPull', () => {
       updated_at: '2026-09-01T00:00:00Z',
     }).state).toBe('merged')
   })
+
+  it('passes through optional commits and user', () => {
+    expect(mapPull('o/r', {
+      number: 1,
+      title: 'Feed',
+      state: 'open',
+      html_url: 'https://github.com/o/r/pull/1',
+      updated_at: '2026-09-01T00:00:00Z',
+      commits: 4,
+      user: 'octo',
+    })).toMatchObject({ commits: 4, user: 'octo' })
+  })
 })
 
 describe('collectPullRequests', () => {

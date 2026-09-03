@@ -1,7 +1,7 @@
 import type { Conversation } from '@/store'
-import { workingDirLeaf } from './chat-display'
+import { ENGINE_LABELS, inferTreeKind, isTreeKind, sessionTitle } from './chat-session-identity'
 
-export type SessionKind = 'claude-code' | 'codex-cli' | 'hermes' | 'opencode' | 'gateway'
+export type SessionKind = 'claude-code' | 'codex-cli' | 'hermes' | 'opencode' | 'grok' | 'kimi' | 'gateway'
 
 export type SessionRecord = {
   id: string
@@ -16,6 +16,7 @@ export type SessionRecord = {
   lastActivity?: number
   workingDir?: string | null
   lastUserPrompt?: string | null
+  title?: string | null
 }
 
 export type SessionPrefs = Record<string, { name?: string; color?: string }>
@@ -68,20 +69,22 @@ export function readSessions(payload: unknown): SessionRecord[] {
       lastUserPrompt: typeof session?.lastUserPrompt === 'string' || session?.lastUserPrompt === null
         ? session.lastUserPrompt
         : undefined,
+      title: typeof session?.title === 'string' || session?.title === null ? session.title : undefined,
     }]
   })
 }
 
-function asKind(kind: string | undefined): SessionKind {
-  if (kind === 'claude-code' || kind === 'codex-cli' || kind === 'hermes' || kind === 'opencode') {
+function asKind(kind: string | undefined, model?: string): SessionKind {
+  const inferred = inferTreeKind(kind, model)
+  if (inferred) return inferred
+  if (kind === 'hermes' || kind === 'opencode' || kind === 'claude-code' || kind === 'codex-cli' || kind === 'grok' || kind === 'kimi') {
     return kind
   }
   return 'gateway'
 }
 
 function kindLabel(kind: SessionKind): string {
-  if (kind === 'codex-cli') return 'Codex'
-  if (kind === 'claude-code') return 'Claude'
+  if (isTreeKind(kind)) return ENGINE_LABELS[kind]
   if (kind === 'hermes') return 'Hermes'
   if (kind === 'opencode') return 'OpenCode'
   return 'Gateway'
@@ -97,11 +100,16 @@ export function mapProviderSessions(
       const updatedAt = lastActivityMs > 1_000_000_000_000
         ? Math.floor(lastActivityMs / 1000)
         : lastActivityMs
-      const sessionKind = asKind(s.kind)
+      const sessionKind = asKind(s.kind, s.model)
       const prefKey = `${sessionKind}:${s.id}`
       const pref = prefs[prefKey] || {}
-      const leaf = workingDirLeaf(s.workingDir)
-      const defaultName = pref.name || `${s.agent || kindLabel(sessionKind)} • ${leaf || s.key || s.id}`
+      const defaultName = sessionTitle({
+        customTitle: s.title,
+        lastUserPrompt: s.lastUserPrompt,
+        prefName: pref.name,
+        kind: sessionKind,
+        id: s.id,
+      })
       return {
         id: `session:${sessionKind}:${s.id}`,
         name: defaultName,
@@ -119,8 +127,11 @@ export function mapProviderSessions(
           tokens: s.tokens,
           workingDir: s.workingDir || null,
           lastUserPrompt: s.lastUserPrompt || null,
+          customTitle: s.title || undefined,
           active: !!s.active,
           age: s.age,
+          startTime: s.startTime,
+          lastActivity: s.lastActivity,
         },
         participants: [] as string[],
         lastMessage: {

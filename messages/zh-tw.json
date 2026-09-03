@@ -2258,8 +2258,17 @@
     "operator": "Operator",
     "localPlan": "Local",
     "modelHint": "Pick a model from the Mission Control catalog.",
+    "llms": "LLMs",
+    "models": "Models",
     "moreModels": "More models",
     "fastMode": "Fast mode",
+    "effort": "Effort",
+    "effortLevel": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
+    },
     "usageLimit": "Weekly usage limit · {percent}% used",
     "usageResets": "Resets {date}",
     "bypassPermissions": "Bypass permissions",
@@ -2276,6 +2285,17 @@
       "active": "Active"
     },
     "share": "Share",
-    "closePlan": "Close plan"
+    "closePlan": "Close plan",
+    "handoff": "Handoff",
+    "handoffSession": "Handoff this session",
+    "sessionLimitReached": "Session limit reached",
+    "dismissBanner": "Dismiss",
+    "reorderProject": "Reorder {project}",
+    "contextWindow": "Context {percent}%",
+    "tokensUsed": "{tokens} tokens",
+    "timeSpent": "{time}",
+    "feedPull": "Pull",
+    "feedPush": "Push",
+    "feedCommit": "Commit"
   }
 }

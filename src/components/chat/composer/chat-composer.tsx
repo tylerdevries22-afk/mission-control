@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { getAllModels } from '@/lib/models'
 import { modelPickerLabel } from '@/lib/chat-display'
+import type { EffortLevel } from '@/lib/chat-model-groups'
 import { ComposerChips } from './composer-chips'
 import { ModelPicker } from './model-picker'
 import { UsageBanner } from './usage-banner'
@@ -20,6 +21,8 @@ export function ChatComposer({
   onModelAlias,
   fastMode,
   onFastMode,
+  effort,
+  onEffort,
   usedPercent,
   resetsAt,
   bypassLabel,
@@ -36,6 +39,8 @@ export function ChatComposer({
   onModelAlias: (alias: string) => void
   fastMode: boolean
   onFastMode: (next: boolean) => void
+  effort: EffortLevel
+  onEffort: (next: EffortLevel) => void
   usedPercent: number | null
   resetsAt: string | null
   bypassLabel?: string
@@ -107,6 +112,8 @@ export function ChatComposer({
                 onChange={onModelAlias}
                 fastMode={fastMode}
                 onFastMode={onFastMode}
+                effort={effort}
+                onEffort={onEffort}
                 onClose={() => setPickerOpen(false)}
               />
             )}

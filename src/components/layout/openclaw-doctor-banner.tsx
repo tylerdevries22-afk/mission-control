@@ -55,7 +55,13 @@ export function OpenClawDoctorBanner() {
   }
 
   useEffect(() => {
-    void loadDoctorStatus()
+    const start = () => { void loadDoctorStatus() }
+    if (typeof window.requestIdleCallback === 'function') {
+      const idle = window.requestIdleCallback(start, { timeout: 8000 })
+      return () => window.cancelIdleCallback(idle)
+    }
+    const timer = window.setTimeout(start, 2500)
+    return () => window.clearTimeout(timer)
   }, [])
 
   async function handleFix() {

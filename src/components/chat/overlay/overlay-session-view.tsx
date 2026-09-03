@@ -52,7 +52,7 @@ export function OverlaySessionView({
           </div>
         )}
       </div>
-      {isPty && viewMode === 'terminal' ? (
+      {isPty && viewMode === 'terminal' && (session.sessionKind === 'claude-code' || session.sessionKind === 'codex-cli') ? (
         <div className="min-h-0 flex-1">
           <TerminalView sessionId={session.sessionId} sessionKind={session.sessionKind} mode="readonly" onError={() => setViewMode('transcript')} />
         </div>

@@ -1,14 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import type { ChatFilterState } from '@/lib/group-sessions'
-import type { SidebarRow } from '@/lib/group-sessions'
+import type { ChatFilterState, SidebarRow } from '@/lib/group-sessions'
 import { ChatFilterPopover } from './chat-filter-popover'
+import { ChatProjectFolder } from './chat-project-folder'
+import type { GitLensSessionRow } from './chat-session-row'
 import { IconChevron, IconSearch, IconSliders } from './chat-icons'
-
-const ROW =
-  'group flex h-8 w-full items-center rounded-lg px-2 text-[13px] text-[var(--chat-muted)] hover:bg-white/5 hover:text-[var(--chat-text)]'
+import { applyFolderOrder, useFolderDnd, type FolderDragProps } from './use-folder-dnd'
 
 export function ChatProjectList({
   pinned,
@@ -19,6 +18,14 @@ export function ChatProjectList({
   onSelect,
   onNewInGroup,
   onSearch,
+  sessionsByProject,
+  activeSessionId,
+  onSelectSession,
+  pins,
+  onTogglePin,
+  folderOrder = [],
+  onReorder,
+  now,
 }: {
   pinned: SidebarRow[]
   rest: SidebarRow[]
@@ -28,38 +35,59 @@ export function ChatProjectList({
   onSelect: (row: SidebarRow) => void
   onNewInGroup: (row: SidebarRow) => void
   onSearch: (value: string) => void
+  sessionsByProject: Record<string, GitLensSessionRow[]>
+  activeSessionId: string | null
+  onSelectSession: (id: string) => void
+  pins: string[]
+  onTogglePin: (slug: string) => void
+  folderOrder?: string[]
+  onReorder?: (next: string[]) => void
+  now?: number
 }) {
   const t = useTranslations('chatDesktop')
   const [filterOpen, setFilterOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
+  const orderedPinned = applyFolderOrder(pinned, folderOrder)
+  const orderedRest = applyFolderOrder(rest, folderOrder)
+  const keys = [...orderedPinned, ...orderedRest].map((row) => row.key)
+  const dnd = useFolderDnd({ keys, onReorder: onReorder ?? (() => undefined), listRef })
+  const folderShared = {
+    showPr: filters.showPrStatus,
+    sessionsByProject,
+    activeSessionId,
+    selectedKey,
+    pins,
+    now,
+    dragging: dnd.dragging,
+    onSelect,
+    onNewInGroup,
+    onTogglePin,
+    onSelectSession,
+    folderProps: dnd.folderProps,
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-2 pt-3">
       <div className="flex items-center gap-1 px-1">
         <span className="flex-1 text-[13px] text-[var(--chat-muted)]">{t('projects')}</span>
-        <button type="button" className="rounded p-1 text-[var(--chat-muted)] hover:bg-white/5" onClick={() => onNewInGroup(rest[0] || pinned[0])} aria-label={t('navNew')} disabled={!rest.length && !pinned.length}>
+        <button type="button" className="cursor-pointer rounded p-1 text-[var(--chat-muted)] hover:bg-white/5" onClick={() => onNewInGroup(rest[0] || pinned[0])} aria-label={t('navNew')} disabled={!rest.length && !pinned.length}>
           <span className="text-sm leading-none">+</span>
         </button>
-        <button type="button" className="rounded p-1 text-[var(--chat-muted)] hover:bg-white/5" onClick={() => setSearchOpen((open) => !open)} aria-label={t('searchProjects')}>
+        <button type="button" className="cursor-pointer rounded p-1 text-[var(--chat-muted)] hover:bg-white/5" onClick={() => setSearchOpen((open) => !open)} aria-label={t('searchProjects')}>
           <IconSearch />
         </button>
         <div className="relative">
           <button
             type="button"
-            className="rounded p-1 text-[var(--chat-muted)] hover:bg-white/5"
+            className="cursor-pointer rounded p-1 text-[var(--chat-muted)] hover:bg-white/5"
             onClick={() => setFilterOpen((open) => !open)}
             aria-label={t('filterProjects')}
             aria-expanded={filterOpen}
           >
             <IconSliders />
           </button>
-          {filterOpen && (
-            <ChatFilterPopover
-              value={filters}
-              onChange={onFiltersChange}
-              onClose={() => setFilterOpen(false)}
-            />
-          )}
+          {filterOpen && <ChatFilterPopover value={filters} onChange={onFiltersChange} onClose={() => setFilterOpen(false)} />}
         </div>
       </div>
       {searchOpen && (
@@ -70,11 +98,11 @@ export function ChatProjectList({
           className="mt-2 h-8 rounded-md border border-[var(--chat-border)] bg-black/30 px-2 text-[13px] text-[var(--chat-text)] placeholder:text-[var(--chat-muted)]"
         />
       )}
-      <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
-        {pinned.length > 0 && (
-          <Section label={t('pinned')} rows={pinned} selectedKey={selectedKey} showPr={filters.showPrStatus} onSelect={onSelect} onNewInGroup={onNewInGroup} />
+      <div ref={listRef} className="mt-2 min-h-0 flex-1 overflow-y-auto">
+        {orderedPinned.length > 0 && (
+          <Section label={t('pinned')} rows={orderedPinned} {...folderShared} />
         )}
-        <Section rows={rest} selectedKey={selectedKey} showPr={filters.showPrStatus} onSelect={onSelect} onNewInGroup={onNewInGroup} />
+        <Section rows={orderedRest} {...folderShared} />
       </div>
     </div>
   )
@@ -85,46 +113,60 @@ function Section({
   rows,
   selectedKey,
   showPr,
+  sessionsByProject,
+  activeSessionId,
+  pins,
+  now,
+  dragging,
   onSelect,
   onNewInGroup,
+  onTogglePin,
+  onSelectSession,
+  folderProps,
 }: {
   label?: string
   rows: SidebarRow[]
   selectedKey: string | null
   showPr: boolean
+  sessionsByProject: Record<string, GitLensSessionRow[]>
+  activeSessionId: string | null
+  pins: string[]
+  now?: number
+  dragging: string | null
   onSelect: (row: SidebarRow) => void
   onNewInGroup: (row: SidebarRow) => void
+  onTogglePin: (slug: string) => void
+  onSelectSession: (id: string) => void
+  folderProps: (key: string) => FolderDragProps
 }) {
-  const t = useTranslations('chatDesktop')
+  const [open, setOpen] = useState(true)
   return (
     <div className="mb-2">
       {label && (
-        <button type="button" className="flex h-7 w-full items-center gap-1 px-2 text-[13px] text-[var(--chat-muted)]">
+        <button type="button" className="flex h-7 w-full cursor-pointer items-center gap-1 px-2 text-[13px] text-[var(--chat-muted)]" onClick={() => setOpen((value) => !value)}>
           {label}
-          <IconChevron className="h-3 w-3 rotate-90" />
+          <IconChevron className={`h-3 w-3 ${open ? 'rotate-90' : ''}`} />
         </button>
       )}
-      {rows.map((row) => {
-        const selected = row.key === selectedKey
+      {open && rows.map((row) => {
+        const slug = row.key.slice(row.key.indexOf(':') + 1)
         return (
-          <div
+          <ChatProjectFolder
             key={row.key}
-            className={`${ROW} ${selected ? 'border border-[var(--chat-border)] bg-transparent text-[var(--chat-text)]' : 'border border-transparent'}`}
-          >
-            <button type="button" className="min-w-0 flex-1 truncate text-left" onClick={() => onSelect(row)}>
-              {row.label}
-              {showPr && row.hasPr ? <span className="ml-1 text-[10px] text-[var(--chat-accent)]">PR</span> : null}
-            </button>
-            <button
-              type="button"
-              className="hidden h-5 w-5 items-center justify-center rounded text-[var(--chat-muted)] group-hover:flex hover:text-[var(--chat-text)]"
-              onClick={() => onNewInGroup(row)}
-              aria-label={t('newInProject', { project: row.label })}
-            >
-              +
-            </button>
-            <IconChevron className="ml-1 opacity-50" />
-          </div>
+            row={row}
+            selected={row.key === selectedKey}
+            showPr={showPr}
+            sessions={sessionsByProject[row.key] || []}
+            activeSessionId={activeSessionId}
+            pinned={pins.includes(slug)}
+            dragging={dragging === row.key}
+            now={now}
+            onSelect={onSelect}
+            onNewInGroup={onNewInGroup}
+            onTogglePin={onTogglePin}
+            onSelectSession={onSelectSession}
+            folderProps={folderProps(row.key)}
+          />
         )
       })}
     </div>

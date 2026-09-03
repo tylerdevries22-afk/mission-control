@@ -59,7 +59,11 @@ export function useDesktopSend(onSessionRefresh: () => void) {
     }
   }, [addChatMessage, replacePendingMessage, updatePendingMessage])
 
-  const sendSession = useCallback(async (prompt: string, session: NonNullable<Conversation['session']>) => {
+  const sendSession = useCallback(async (
+    prompt: string,
+    session: NonNullable<Conversation['session']>,
+    options?: { model?: string; fast?: boolean; effort?: string },
+  ) => {
     setBusy(true)
     setError(null)
     try {
@@ -81,7 +85,14 @@ export function useDesktopSend(onSessionRefresh: () => void) {
       } else {
         await apiFetch('/api/sessions/continue', {
           method: 'POST',
-          body: JSON.stringify({ kind: session.sessionKind, id: session.sessionId, prompt }),
+          body: JSON.stringify({
+            kind: session.sessionKind,
+            id: session.sessionId,
+            prompt,
+            model: options?.model,
+            fast: options?.fast,
+            effort: options?.effort,
+          }),
         })
         onSessionRefresh()
       }

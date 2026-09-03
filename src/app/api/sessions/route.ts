@@ -4,12 +4,15 @@ import { syncClaudeSessions } from '@/lib/claude-sessions'
 import { scanCodexSessions } from '@/lib/codex-sessions'
 import { scanHermesSessions } from '@/lib/hermes-sessions'
 import { scanOpenCodeSessions } from '@/lib/opencode-sessions'
+import { getLocalGrokSessions, getLocalKimiSessions } from '@/lib/local-engine-sessions'
 import { getDatabase, db_helpers } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { callOpenClawGateway } from '@/lib/openclaw-gateway'
 import { mutationLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 import { denyUnscopedResourceForStrictWorkspace } from '@/lib/workspace-isolation'
+import { projectSlugOf } from '@/lib/chat-session-identity'
+import { takeBalancedSessions } from '@/lib/session-list-balance'
 
 // Upstream default 90 minutes was too lax (every recently-touched jsonl
 // stayed "active"); 2 minutes was too tight. 15 minutes matches the
@@ -26,19 +29,50 @@ export async function GET(request: NextRequest) {
     const gatewaySessions = getAllGatewaySessions()
     const mappedGatewaySessions = mapGatewaySessions(gatewaySessions)
 
-    // Always include local sessions alongside gateway sessions
-    await syncClaudeSessions()
-    const claudeSessions = getLocalClaudeSessions()
+    const cachedClaude = getLocalClaudeSessions()
+    if (cachedClaude.length === 0) await syncClaudeSessions()
+    else void syncClaudeSessions()
+    const claudeSessions = cachedClaude.length > 0 ? cachedClaude : getLocalClaudeSessions()
     const codexSessions = getLocalCodexSessions()
     const hermesSessions = getLocalHermesSessions()
     const opencodeSessions = getLocalOpenCodeSessions()
-    const localMerged = mergeLocalSessions(claudeSessions, codexSessions, hermesSessions, opencodeSessions)
+    const grokSessions = getLocalGrokSessions()
+    const kimiSessions = getLocalKimiSessions()
+    const localMerged = mergeLocalSessions(
+      claudeSessions,
+      codexSessions,
+      hermesSessions,
+      opencodeSessions,
+      grokSessions,
+      kimiSessions,
+    )
 
     if (mappedGatewaySessions.length === 0 && localMerged.length === 0) {
       return NextResponse.json({ sessions: [] })
     }
 
-    const merged = dedupeAndSortSessions([...mappedGatewaySessions, ...localMerged])
+    const project = new URL(request.url).searchParams.get('project')?.trim().toLowerCase() || ''
+    const includeArchived = new URL(request.url).searchParams.get('include') === 'archived'
+    let merged = dedupeAndSortSessions([...mappedGatewaySessions, ...localMerged])
+    if (includeArchived) {
+      try {
+        const { listArchivedSessions } = await import('@/lib/session-archive-index')
+        merged = dedupeAndSortSessions([...merged, ...listArchivedSessions(getDatabase(), project || undefined)])
+      } catch (err) {
+        logger.warn({ err }, 'Archived session merge skipped')
+      }
+    }
+    if (project) {
+      merged = merged.filter((session) => projectSlugOf(typeof session.workingDir === 'string' ? session.workingDir : null) === project)
+    }
+    try {
+      const { archiveListedSessions } = await import('@/lib/session-archive')
+      const { indexSessionArchives } = await import('@/lib/session-archive-index')
+      archiveListedSessions(merged)
+      indexSessionArchives(getDatabase(), merged)
+    } catch (err) {
+      logger.warn({ err }, 'Session archive skipped')
+    }
     return NextResponse.json({ sessions: merged })
   } catch (error) {
     logger.error({ err: error }, 'Sessions API error')
@@ -241,6 +275,7 @@ function getLocalClaudeSessions() {
         toolUses: s.tool_uses || 0,
         estimatedCost: s.estimated_cost || 0,
         lastUserPrompt: s.last_user_prompt || null,
+        title: typeof s.custom_title === 'string' && s.custom_title ? s.custom_title : null,
         workingDir: s.project_path || null,
       }
     })
@@ -277,7 +312,8 @@ function getLocalCodexSessions() {
         assistantMessages: s.assistantMessages || 0,
         toolUses: 0,
         estimatedCost: 0,
-        lastUserPrompt: null,
+        lastUserPrompt: s.lastUserPrompt || null,
+        title: s.lastUserPrompt || null,
         totalTokens: total,
         workingDir: s.projectPath || null,
       }
@@ -366,8 +402,10 @@ function mergeLocalSessions(
   codexSessions: Array<Record<string, any>>,
   hermesSessions: Array<Record<string, any>> = [],
   opencodeSessions: Array<Record<string, any>> = [],
+  grokSessions: Array<Record<string, any>> = [],
+  kimiSessions: Array<Record<string, any>> = [],
 ) {
-  const merged = [...claudeSessions, ...codexSessions, ...hermesSessions, ...opencodeSessions]
+  const merged = [...claudeSessions, ...codexSessions, ...hermesSessions, ...opencodeSessions, ...grokSessions, ...kimiSessions]
   return dedupeAndSortSessions(merged)
 }
 
@@ -385,9 +423,7 @@ function dedupeAndSortSessions(merged: Array<Record<string, any>>) {
     if (!existing || currentActivity > existingActivity) deduped.set(key, session)
   }
 
-  return Array.from(deduped.values())
-    .sort((a, b) => Number(b?.lastActivity || 0) - Number(a?.lastActivity || 0))
-    .slice(0, 100)
+  return takeBalancedSessions(Array.from(deduped.values()))
 }
 
 function formatTokens(n: number): string {

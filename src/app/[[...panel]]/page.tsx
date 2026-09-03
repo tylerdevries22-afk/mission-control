@@ -99,7 +99,7 @@ export default function Home() {
   const tb = useTranslations('boot')
   const tp = useTranslations('page')
   const tc = useTranslations('common')
-  const { activeTab, setActiveTab, setCurrentUser, setDashboardMode, setGatewayAvailable, setLocalSessionsAvailable, setCapabilitiesChecked, setSubscription, setDefaultOrgName, setUpdateAvailable, setOpenclawUpdate, showOnboarding, setShowOnboarding, liveFeedOpen, toggleLiveFeed, showProjectManagerModal, setShowProjectManagerModal, fetchProjects, setChatPanelOpen, bootComplete, setBootComplete, setAgents, setSessions, setProjects, setInterfaceMode, setMemoryGraphAgents, setSkillsData } = useMissionControl()
+  const { activeTab, setActiveTab, setCurrentUser, setDashboardMode, setGatewayAvailable, setLocalSessionsAvailable, setCapabilitiesChecked, setSubscription, setDefaultOrgName, setUpdateAvailable, setOpenclawUpdate, showOnboarding, setShowOnboarding, liveFeedOpen, toggleLiveFeed, showProjectManagerModal, setShowProjectManagerModal, fetchProjects, setChatPanelOpen, bootComplete, setBootComplete, setAgents, setSessions, setProjects, setInterfaceMode, setMemoryGraphAgents, setSkillsData, setSidebarExpanded } = useMissionControl()
 
   // Sync URL → Zustand activeTab
   const pathname = usePathname()
@@ -118,11 +118,12 @@ export default function Home() {
     setActiveTab(normalizedPanel)
     if (normalizedPanel === 'chat') {
       setChatPanelOpen(false)
+      setSidebarExpanded(false)
     }
     if (panelFromUrl === 'sessions') {
       router.replace('/chat')
     }
-  }, [panelFromUrl, normalizedPanel, router, setActiveTab, setChatPanelOpen])
+  }, [panelFromUrl, normalizedPanel, router, setActiveTab, setChatPanelOpen, setSidebarExpanded])
 
   // Connect to SSE for real-time local DB events (tasks, agents, chat, etc.)
   useServerEvents()
@@ -145,10 +146,10 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!bootComplete && initSteps.every(s => s.status === 'done')) {
+    if (!bootComplete && stepStatuses.auth === 'done') {
       setBootComplete()
     }
-  }, [initSteps, bootComplete, setBootComplete])
+  }, [stepStatuses.auth, bootComplete, setBootComplete])
 
   // Security console warning (anti-self-XSS)
   useEffect(() => {
@@ -326,22 +327,15 @@ export default function Home() {
           }
           setCapabilitiesChecked(true)
           markStep('capabilities')
-          const primaryConnect = await connectWithPrimaryGateway(localGatewayUrl)
-          if (!primaryConnect.connected) {
-            connect(localGatewayUrl)
-          }
-          markStep('connect')
           return
         }
 
-        // No user-chosen URL — use server's gateway flag to decide
+        // A missed TCP probe is "unknown", not "no gateway". Keep retrying WS.
         if (data && data.gateway === false) {
           setDashboardMode('local')
           setGatewayAvailable(false)
           setCapabilitiesChecked(true)
           markStep('capabilities')
-          markStep('connect')
-          // Skip WebSocket connect — no gateway to talk to
           return
         }
         if (data && data.gateway === true) {
@@ -353,21 +347,22 @@ export default function Home() {
         }
         setCapabilitiesChecked(true)
         markStep('capabilities')
-
-        // No user choice + server gateway flag false → try primary gateway / env fallback
-        const primaryConnect = await connectWithPrimaryGateway()
-        if (!primaryConnect.connected && !primaryConnect.attempted) {
-          connectWithEnvFallback(null)
-        }
-        markStep('connect')
       })
       .catch(() => {
-        // If capabilities check fails, still try to connect
         setCapabilitiesChecked(true)
         markStep('capabilities')
-        markStep('connect')
-        connectWithEnvFallback(null)
       })
+
+    void connectWithPrimaryGateway(typeof window !== 'undefined' ? localStorage.getItem(STORAGE_GATEWAY_URL) : null)
+      .then((primaryConnect) => {
+        if (!primaryConnect.connected && !primaryConnect.attempted) {
+          connectWithEnvFallback(typeof window !== 'undefined' ? localStorage.getItem(STORAGE_GATEWAY_URL) : null)
+        }
+      })
+      .catch(() => {
+        connectWithEnvFallback(typeof window !== 'undefined' ? localStorage.getItem(STORAGE_GATEWAY_URL) : null)
+      })
+      .finally(() => { markStep('connect') })
 
     // Check onboarding state.
     // Original mapped non-ok → data=null → getOnboardingSessionDecision with all-false
@@ -401,38 +396,32 @@ export default function Home() {
     // setter. apiFetch throws on non-ok instead; the rejection is absorbed by
     // Promise.allSettled and the guarded .then is skipped — same net effect (no setter,
     // step still marked via .finally / pre-fetch markStep). Panels lazy-load as fallback.
+    markStep('agents')
+    markStep('sessions')
+    markStep('projects')
+    markStep('memory')
+    markStep('skills')
     Promise.allSettled([
       apiFetch<{ agents?: unknown }>('/api/agents')
         .then((agentsData) => {
           if (agentsData?.agents) setAgents(agentsData.agents as Parameters<typeof setAgents>[0])
-        })
-        .finally(() => { markStep('agents') }),
-      // Sessions can be slow with many JSONL files — don't block boot
-      (() => {
-        markStep('sessions')
-        return apiFetch<{ sessions?: unknown }>('/api/sessions')
-          .then((sessionsData) => {
-            if (sessionsData?.sessions) setSessions(sessionsData.sessions as Parameters<typeof setSessions>[0])
-          })
-      })(),
+        }),
+      apiFetch<{ sessions?: unknown }>('/api/sessions')
+        .then((sessionsData) => {
+          if (sessionsData?.sessions) setSessions(sessionsData.sessions as Parameters<typeof setSessions>[0])
+        }),
       apiFetch<{ projects?: unknown }>('/api/projects')
         .then((projectsData) => {
           if (projectsData?.projects) setProjects(projectsData.projects as Parameters<typeof setProjects>[0])
-        })
-        .finally(() => { markStep('projects') }),
-      // Memory graph can be slow — don't block boot
-      (() => {
-        markStep('memory')
-        return apiFetch<{ agents?: unknown }>('/api/memory/graph?agent=all')
-          .then((graphData) => {
-            if (graphData?.agents) setMemoryGraphAgents(graphData.agents as Parameters<typeof setMemoryGraphAgents>[0])
-          })
-      })(),
+        }),
+      apiFetch<{ agents?: unknown }>('/api/memory/graph?agent=all')
+        .then((graphData) => {
+          if (graphData?.agents) setMemoryGraphAgents(graphData.agents as Parameters<typeof setMemoryGraphAgents>[0])
+        }),
       apiFetch<{ skills?: unknown; groups?: unknown; total?: unknown }>('/api/skills')
         .then((skillsData) => {
           if (skillsData?.skills) setSkillsData(skillsData.skills as Parameters<typeof setSkillsData>[0], (skillsData.groups || []) as Parameters<typeof setSkillsData>[1], (skillsData.total || 0) as number)
-        })
-        .finally(() => { markStep('skills') }),
+        }),
     ]).catch(() => { /* panels will lazy-load as fallback */ })
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- boot once on mount, not on every pathname change
@@ -451,7 +440,7 @@ export default function Home() {
       </a>
 
       {/* Left: Icon rail navigation (hidden on mobile, shown as bottom bar instead) */}
-      {!showOnboarding && !isChatDesktop && <NavRail />}
+      {!showOnboarding && <NavRail />}
 
       {/* Center: Header + Content */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -467,7 +456,7 @@ export default function Home() {
         <main
           id="main-content"
           className={isChatDesktop
-            ? 'flex-1 overflow-hidden'
+            ? 'flex-1 overflow-hidden pb-16 md:pb-0'
             : `flex-1 overflow-auto pb-16 md:pb-0 ${showOnboarding ? 'pointer-events-none select-none blur-[2px] opacity-30' : ''}`}
           role="main"
           aria-hidden={showOnboarding}

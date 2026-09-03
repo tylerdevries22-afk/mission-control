@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { useNavigateToPanel } from '@/lib/navigation'
 import {
   IconArtifacts,
   IconChevron,
@@ -24,9 +23,16 @@ const MORE_ITEMS = [
   { id: 'monitor', labelKey: 'moreMonitor' },
 ] as const
 
-export function ChatNav({ onNew }: { onNew: () => void }) {
+export function ChatNav({
+  onNew,
+  onNavigate,
+  onCustomize,
+}: {
+  onNew: () => void
+  onNavigate: (panel: string) => void
+  onCustomize: () => void
+}) {
   const t = useTranslations('chatDesktop')
-  const navigate = useNavigateToPanel()
   const [moreOpen, setMoreOpen] = useState(false)
 
   return (
@@ -35,20 +41,20 @@ export function ChatNav({ onNew }: { onNew: () => void }) {
         <IconPlus />
         {t('navNew')}
       </button>
-      <button type="button" className={NAV_CLASS} onClick={() => navigate('memory')}>
+      <button type="button" className={NAV_CLASS} onClick={() => onNavigate('memory')}>
         <IconArtifacts />
         {t('navArtifacts')}
       </button>
-      <button type="button" className={NAV_CLASS} onClick={() => navigate('cron')}>
+      <button type="button" className={NAV_CLASS} onClick={() => onNavigate('cron')}>
         <IconClock />
         {t('navRoutines')}
       </button>
-      <button type="button" className={NAV_CLASS} onClick={() => navigate('tasks')}>
+      <button type="button" className={NAV_CLASS} onClick={() => onNavigate('tasks')}>
         <IconDispatch />
         <span className="flex-1 text-left">{t('navDispatch')}</span>
         <span className="rounded bg-white/8 px-1.5 py-px text-[10px] text-[var(--chat-muted)]">{t('beta')}</span>
       </button>
-      <button type="button" className={NAV_CLASS} onClick={() => navigate('settings')}>
+      <button type="button" className={NAV_CLASS} onClick={onCustomize}>
         <IconCustomize />
         {t('navCustomize')}
       </button>
@@ -66,7 +72,7 @@ export function ChatNav({ onNew }: { onNew: () => void }) {
                 className={NAV_CLASS}
                 onClick={() => {
                   setMoreOpen(false)
-                  navigate(item.id)
+                  onNavigate(item.id)
                 }}
               >
                 {t(item.labelKey)}

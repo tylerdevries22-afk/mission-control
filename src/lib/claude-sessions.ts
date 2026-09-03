@@ -18,6 +18,7 @@ import { join } from 'path'
 import { config } from './config'
 import { getDatabase } from './db'
 import { logger } from './logger'
+import { looksLikeNoisePrompt } from './chat-session-identity'
 
 // Skip JSONL files larger than this to avoid excessive I/O
 const DEFAULT_MAX_SESSION_FILE_BYTES = 50 * 1024 * 1024 // 50 MB
@@ -66,6 +67,7 @@ interface SessionStats {
   firstMessageAt: string | null
   lastMessageAt: string | null
   lastUserPrompt: string | null
+  customTitle: string | null
   isActive: boolean
 }
 
@@ -76,6 +78,7 @@ interface JSONLEntry {
   isSidechain?: boolean
   gitBranch?: string
   cwd?: string
+  customTitle?: string
   message?: {
     role?: string
     content?: string | Array<{ type: string; text?: string; id?: string }>
@@ -101,6 +104,7 @@ function clampTimestamp(ms: number): number {
 // scanClaudeSessions() runs every 30s; without this each big jsonl prints a
 // WARN every cycle. Reset on process restart.
 const warnedOversized = new Set<string>()
+const parsedCache = new Map<string, { mtimeMs: number; stats: SessionStats }>()
 
 async function parseSessionFile(filePath: string, projectSlug: string, fileMtimeMs: number, fileSizeBytes: number): Promise<SessionStats | null> {
   try {
@@ -129,6 +133,8 @@ async function parseSessionFile(filePath: string, projectSlug: string, fileMtime
     let firstMessageAt: string | null = null
     let lastMessageAt: string | null = null
     let lastUserPrompt: string | null = null
+    let customTitle: string | null = null
+    let firstPrompt: string | null = null
     let hasLines = false
 
     const rl = createInterface({
@@ -167,11 +173,19 @@ async function parseSessionFile(filePath: string, projectSlug: string, fileMtime
 
         if (entry.isSidechain) continue
 
+        if (entry.type === 'custom-title' && typeof entry.customTitle === 'string' && entry.customTitle.trim()) {
+          customTitle = entry.customTitle.replace(/\s+/g, ' ').trim()
+        }
+
         if (entry.type === 'user' && entry.message) {
           userMessages++
           const msg = entry.message
           if (typeof msg.content === 'string' && msg.content.length > 0) {
-            lastUserPrompt = msg.content.slice(0, 500)
+            const snippet = msg.content.slice(0, 500)
+            if (!looksLikeNoisePrompt(snippet)) {
+              lastUserPrompt = snippet
+              if (!firstPrompt) firstPrompt = snippet
+            }
           }
         }
 
@@ -234,6 +248,7 @@ async function parseSessionFile(filePath: string, projectSlug: string, fileMtime
       firstMessageAt: effectiveFirstMs ? new Date(effectiveFirstMs).toISOString() : null,
       lastMessageAt: effectiveLastMs ? new Date(effectiveLastMs).toISOString() : null,
       lastUserPrompt,
+      customTitle: customTitle || firstPrompt || lastUserPrompt,
       isActive,
     }
   } catch (err) {
@@ -283,8 +298,19 @@ export async function scanClaudeSessions(): Promise<SessionStats[]> {
       } catch {
         continue // file disappeared between readdir and stat
       }
+      const cached = parsedCache.get(filePath)
+      if (cached && cached.mtimeMs === fileStat.mtimeMs) {
+        sessions.push({
+          ...cached.stats,
+          isActive: fileStat.mtimeMs > 0 && (Date.now() - fileStat.mtimeMs) < ACTIVE_THRESHOLD_MS,
+        })
+        continue
+      }
       const parsed = await parseSessionFile(filePath, projectSlug, fileStat.mtimeMs, fileStat.size)
-      if (parsed) sessions.push(parsed)
+      if (parsed) {
+        parsedCache.set(filePath, { mtimeMs: fileStat.mtimeMs, stats: parsed })
+        sessions.push(parsed)
+      }
     }
   }
 
@@ -318,9 +344,9 @@ export async function syncClaudeSessions(force = false): Promise<{ ok: boolean; 
         session_id, project_slug, project_path, model, git_branch,
         user_messages, assistant_messages, tool_uses,
         input_tokens, output_tokens, estimated_cost,
-        first_message_at, last_message_at, last_user_prompt,
+        first_message_at, last_message_at, last_user_prompt, custom_title,
         is_active, scanned_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(session_id) DO UPDATE SET
         model = excluded.model,
         git_branch = excluded.git_branch,
@@ -332,6 +358,7 @@ export async function syncClaudeSessions(force = false): Promise<{ ok: boolean; 
         estimated_cost = excluded.estimated_cost,
         last_message_at = excluded.last_message_at,
         last_user_prompt = excluded.last_user_prompt,
+        custom_title = excluded.custom_title,
         is_active = excluded.is_active,
         scanned_at = excluded.scanned_at,
         updated_at = excluded.updated_at
@@ -348,7 +375,7 @@ export async function syncClaudeSessions(force = false): Promise<{ ok: boolean; 
           s.sessionId, s.projectSlug, s.projectPath, s.model, s.gitBranch,
           s.userMessages, s.assistantMessages, s.toolUses,
           s.inputTokens, s.outputTokens, s.estimatedCost,
-          s.firstMessageAt, s.lastMessageAt, s.lastUserPrompt,
+          s.firstMessageAt, s.lastMessageAt, s.lastUserPrompt, s.customTitle,
           s.isActive ? 1 : 0, nowSec, nowSec,
         )
         upserted++

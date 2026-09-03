@@ -1,3 +1,4 @@
+import { applyFolderOrder } from './chat-folder-order'
 import { workingDirLeaf } from './chat-display'
 
 export type GroupBy = 'folder' | 'project' | 'agent'
@@ -16,7 +17,7 @@ export interface ChatFilterState {
 }
 
 export const DEFAULT_CHAT_FILTERS: ChatFilterState = {
-  status: 'active',
+  status: 'all',
   environment: 'all',
   groupBy: 'folder',
   sortBy: 'activity',
@@ -36,6 +37,11 @@ export interface ChatSessionItem {
   project: string
   projectSlug: string
   hasPr: boolean
+  kind: string
+  tokens?: string
+  model?: string
+  age?: string
+  startTime?: number
 }
 
 export interface ChatProjectItem {
@@ -98,6 +104,7 @@ export function buildSidebarRows(
   projects: ChatProjectItem[],
   filters: ChatFilterState,
   pins: string[],
+  folderOrder: string[] = [],
 ): { pinned: SidebarRow[]; rest: SidebarRow[] } {
   const visible = filterSessions(sessions, filters)
   const byKey = new Map<string, SidebarRow>()
@@ -146,5 +153,8 @@ export function buildSidebarRows(
     else rest.push(row)
   }
 
-  return { pinned: sortRows(pinned, filters.sortBy), rest: sortRows(rest, filters.sortBy) }
+  return {
+    pinned: applyFolderOrder(sortRows(pinned, filters.sortBy), folderOrder),
+    rest: applyFolderOrder(sortRows(rest, filters.sortBy), folderOrder),
+  }
 }

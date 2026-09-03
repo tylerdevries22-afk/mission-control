@@ -1,22 +1,23 @@
 'use client'
 
-import { IconSparkle } from '../desktop/chat-icons'
+import { ContextWindowBar } from './context-window-bar'
 
 export function SessionStatusBar({
-  age,
   tokens,
+  duration,
+  percent,
   status,
 }: {
-  age?: string
   tokens?: string
+  duration?: string
+  percent?: number | null
   status?: string
 }) {
-  const parts = [age, tokens, status].filter(Boolean)
-  if (parts.length === 0) return null
+  if (percent == null && !duration && !tokens && !status) return null
   return (
-    <div className="flex items-center gap-2 px-6 pb-2 text-[12px] text-[var(--chat-muted)]">
-      <IconSparkle className="h-3.5 w-3.5" />
-      <span>{parts.join(' · ')}</span>
+    <div className="flex items-center gap-3 px-6 pb-2 text-[12px] text-[var(--chat-muted)]">
+      <ContextWindowBar percent={percent} tokens={tokens} duration={duration} />
+      {status ? <span className="shrink-0">{status}</span> : null}
     </div>
   )
 }

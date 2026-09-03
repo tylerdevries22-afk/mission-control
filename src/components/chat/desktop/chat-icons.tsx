@@ -91,10 +91,23 @@ export function IconFolder({ className = 'h-3.5 w-3.5 shrink-0' }: { className?:
   )
 }
 
-export function IconPin({ className = 'h-3.5 w-3.5 shrink-0' }: { className?: string }) {
+export function IconPin({ className = 'h-3.5 w-3.5 shrink-0', filled = false }: { className?: string; filled?: boolean }) {
   return (
-    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
       <path d="M8 2v9M5 13h6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function IconGrip({ className = 'h-3.5 w-3.5 shrink-0' }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <circle cx="6" cy="4" r="1" />
+      <circle cx="10" cy="4" r="1" />
+      <circle cx="6" cy="8" r="1" />
+      <circle cx="10" cy="8" r="1" />
+      <circle cx="6" cy="12" r="1" />
+      <circle cx="10" cy="12" r="1" />
     </svg>
   )
 }

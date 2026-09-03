@@ -1,89 +1,82 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMissionControl } from '@/store'
-import { apiFetch } from '@/lib/api-client'
-import { workingDirLeaf } from '@/lib/chat-display'
-import { buildSidebarRows, type ChatSessionItem, type SidebarRow } from '@/lib/group-sessions'
-import type { ChatPullRequest } from '@/lib/github-pulls'
+import { applyFolderOrder } from '@/lib/chat-folder-order'
+import { projectSlugOf, sessionsForProject } from '@/lib/chat-session-identity'
+import { conversationsToItems, gitLensByProject, toHomeSessions } from '@/lib/chat-desktop-data'
+import { buildSidebarRows, type SidebarRow } from '@/lib/group-sessions'
 import { extractPlanMarkdown } from '@/lib/session-plan'
+import { useNavigateToPanel } from '@/lib/navigation'
 import { useChatConversations } from '../use-chat-conversations'
 import { useChatDesktopPrefs } from '../use-chat-desktop-prefs'
+import { useChatGithub } from '../use-chat-github'
 import { useDesktopSend } from '../use-desktop-send'
+import { useLiveNow } from '../use-live-now'
 import { useSessionTranscript } from '../use-session-transcript'
 import { ChatComposer } from '../composer/chat-composer'
 import { ChatWelcome } from '../home/chat-welcome'
+import { ChatSessionPane } from '../session/chat-session-pane'
 import { SessionPlanPanel } from '../session/session-plan-panel'
-import { SessionPrChip } from '../session/session-pr-chip'
-import { SessionStatusBar } from '../session/session-status-bar'
-import { SessionThread } from '../session/session-thread'
 import { ChatMobileBar } from './chat-mobile-bar'
 import { ChatShell } from './chat-shell'
 import { ChatSidebar } from './chat-sidebar'
-import type { HomeSessionRow } from '../home/chat-home-list'
 
 export function ChatDesktopWorkspace() {
-  const { currentUser, projects, setActiveConversation, activeConversation, conversations } = useMissionControl()
-  const { agents } = useChatConversations()
+  const { currentUser, projects, setActiveConversation, activeConversation, conversations, setActiveProject } = useMissionControl()
+  const navigate = useNavigateToPanel()
+  const { agents, reload } = useChatConversations()
   const prefs = useChatDesktopPrefs(currentUser?.id)
+  const github = useChatGithub()
+  const now = useLiveNow()
   const selected = conversations.find((conv) => conv.id === activeConversation)
   const transcript = useSessionTranscript(selected?.session)
   const sender = useDesktopSend(transcript.refresh)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [planOpen, setPlanOpen] = useState(true)
-  const [pulls, setPulls] = useState<ChatPullRequest[]>([])
   const [prHidden, setPrHidden] = useState(false)
+  const [bypass, setBypass] = useState(false)
+  const [customizeOpen, setCustomizeOpen] = useState(false)
+  const pulls = github.pullRequests
 
-  useEffect(() => {
-    apiFetch<{ pullRequests?: ChatPullRequest[] }>('/api/github?action=pulls')
-      .then((data) => setPulls(Array.isArray(data.pullRequests) ? data.pullRequests : []))
-      .catch(() => setPulls([]))
-  }, [])
-
-  const items: ChatSessionItem[] = useMemo(() => conversations.filter((conv) => conv.source === 'session').map((conv) => {
-    const leaf = workingDirLeaf(conv.session?.workingDir)
+  const items = useMemo(() => conversationsToItems(conversations, pulls), [conversations, pulls])
+  const rows = useMemo(() => {
+    const built = buildSidebarRows(items, projects.map((p) => ({ name: p.name, slug: p.slug })), prefs.filters, prefs.pins)
     return {
-      id: conv.id,
-      name: conv.name || conv.id,
-      active: !!conv.session?.active,
-      updatedAt: conv.updatedAt,
-      workingDir: conv.session?.workingDir || null,
-      agent: conv.session?.agent || '',
-      environment: conv.session?.sessionKind === 'gateway' ? 'gateway' : 'local',
-      project: leaf,
-      projectSlug: leaf.toLowerCase(),
-      hasPr: pulls.some((pr) => pr.repo.toLowerCase().includes(leaf.toLowerCase())),
+      pinned: applyFolderOrder(built.pinned, prefs.folderOrder),
+      rest: applyFolderOrder(built.rest, prefs.folderOrder),
     }
-  }), [conversations, pulls])
+  }, [items, projects, prefs.filters, prefs.pins, prefs.folderOrder])
+  const sessionsByProject = useMemo(() => gitLensByProject(items, rows), [items, rows])
+  const homeSessions = useMemo(() => toHomeSessions(items), [items])
+  const selectedSlug = selectedKey?.slice((selectedKey.indexOf(':') + 1)) || ''
+  const selectedProject = projects.find((p) => p.slug === selectedSlug || p.name === selectedSlug) || null
+  const selectedLeaf = selected?.session?.workingDir ? projectSlugOf(selected.session.workingDir) : selectedSlug
+  const pr = pulls.find((item) => selectedLeaf && item.repo.toLowerCase().includes(selectedLeaf))
 
-  const rows = useMemo(
-    () => buildSidebarRows(items, projects.map((p) => ({ name: p.name, slug: p.slug })), prefs.filters, prefs.pins),
-    [items, projects, prefs.filters, prefs.pins],
-  )
-
-  const homeSessions: HomeSessionRow[] = items.slice(0, 8).map((item) => ({
-    id: item.id,
-    title: item.name,
-    subtitle: [item.agent, item.project].filter(Boolean).join(' · '),
-    repo: item.project,
-    updatedAt: item.updatedAt,
-    active: item.active,
-    hasPr: item.hasPr,
-  }))
-
-  const onNew = () => setActiveConversation(null)
   const onSelectRow = (row: SidebarRow) => {
+    setSelectedKey((prev) => (prev === row.key ? null : row.key))
+    setActiveProject(projects.find((p) => p.slug === row.key.slice(row.key.indexOf(':') + 1) || p.name === row.label) || null)
+  }
+  const onNewInGroup = (row: SidebarRow) => {
     setSelectedKey(row.key)
-    const match = items.find((item) => item.projectSlug === row.key.slice(row.key.indexOf(':') + 1))
-    if (match) setActiveConversation(null)
+    setActiveConversation(null)
+    setActiveProject(projects.find((p) => p.slug === row.key.slice(row.key.indexOf(':') + 1) || p.name === row.label) || null)
+  }
+  const onNavigate = (panel: string) => {
+    if (selectedProject) setActiveProject(selectedProject)
+    navigate(panel)
   }
   const onSend = (text: string) => {
     if (selected?.session) {
-      void sender.sendSession(text, selected.session)
+      void sender.sendSession(text, selected.session, { model: prefs.modelAlias, fast: prefs.fastMode, effort: prefs.effort })
       return
     }
-    if (activeConversation && !activeConversation.startsWith('session:')) {
-      void sender.sendAgent(text, activeConversation)
+    const latest = selectedKey ? sessionsForProject(items, selectedKey)[0] : undefined
+    const latestConv = latest && conversations.find((conv) => conv.id === latest.id)
+    if (latestConv?.session) {
+      setActiveConversation(latestConv.id)
+      void sender.sendSession(text, latestConv.session, { model: prefs.modelAlias, fast: prefs.fastMode, effort: prefs.effort })
       return
     }
     const agent = agents[0]
@@ -94,9 +87,6 @@ export function ChatDesktopWorkspace() {
   }
 
   const plan = extractPlanMarkdown(transcript.messages)
-  const leaf = workingDirLeaf(selected?.session?.workingDir)
-  const pr = pulls.find((item) => leaf && item.repo.toLowerCase().includes(leaf.toLowerCase()))
-
   return (
     <ChatShell
       sidebar={(
@@ -107,50 +97,73 @@ export function ChatDesktopWorkspace() {
           filters={prefs.filters}
           onFiltersChange={prefs.setFilters}
           onSelect={onSelectRow}
-          onNew={onNew}
-          onNewInGroup={onSelectRow}
+          onNew={() => { setActiveConversation(null); if (selectedProject) setActiveProject(selectedProject) }}
+          onNewInGroup={onNewInGroup}
           onSearch={(search) => prefs.setFilters({ ...prefs.filters, search })}
+          onNavigate={onNavigate}
+          onCustomize={() => setCustomizeOpen((open) => !open)}
+          sessionsByProject={sessionsByProject}
+          activeSessionId={activeConversation}
+          onSelectSession={setActiveConversation}
+          pins={prefs.pins}
+          onTogglePin={(slug) => prefs.setPins(prefs.pins.includes(slug) ? prefs.pins.filter((pin) => pin !== slug) : [...prefs.pins, slug])}
+          folderOrder={prefs.folderOrder}
+          onReorder={prefs.setFolderOrder}
+          now={now}
         />
       )}
       main={(
         <>
-          <ChatMobileBar onNew={onNew} />
-          {selected?.session ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {transcript.loading && <p className="px-8 pt-6 text-[13px] text-[var(--chat-muted)]">Loading…</p>}
-                {transcript.error && <p className="px-8 pt-6 text-[13px] text-red-400">{transcript.error}</p>}
-                <SessionThread messages={transcript.messages} />
-              </div>
-              <SessionStatusBar age={selected.session.age} tokens={selected.session.tokens} status={selected.session.active ? 'Active' : 'Idle'} />
-              <div className="px-6">
-                {!prHidden && pr && (
-                  <SessionPrChip number={pr.number} repo={pr.repo} href={pr.htmlUrl} additions={pr.additions} deletions={pr.deletions} onDismiss={() => setPrHidden(true)} />
-                )}
-              </div>
+          <ChatMobileBar onNew={() => setActiveConversation(null)} />
+          {customizeOpen && (
+            <div className="border-b border-[var(--chat-border)] px-6 py-2 text-[12px] text-[var(--chat-muted)]">
+              {selectedSlug ? `Project ${selectedSlug} · model ${prefs.modelAlias}` : 'Select a project to customize'}
             </div>
+          )}
+          {selected?.session ? (
+            <ChatSessionPane
+              conversation={selected}
+              project={selectedLeaf}
+              messages={transcript.messages}
+              loading={transcript.loading}
+              error={transcript.error}
+              pr={pr}
+              prHidden={prHidden}
+              onDismissPr={() => setPrHidden(true)}
+              onHandoff={(id, kind) => {
+                void reload()
+                if (id && !id.startsWith('pending:')) {
+                  setActiveConversation(id.startsWith('session:') ? id : `session:${kind || selected.session?.sessionKind}:${id}`)
+                }
+              }}
+            />
           ) : (
             <ChatWelcome
               displayName={currentUser?.display_name || currentUser?.username || ''}
               sessions={homeSessions}
               pullRequests={pulls}
+              activity={github.activity}
               onSelectSession={setActiveConversation}
+              now={now}
             />
           )}
           <ChatComposer
             placeholder={selected?.session ? 'Type / for commands' : 'Ask Mission Control'}
             disabled={sender.busy}
             isSending={sender.busy}
-            environment={selected?.session?.sessionKind === 'gateway' ? 'Gateway' : 'Local'}
-            project={leaf}
-            folder={leaf}
+            environment="Local"
+            project={selectedLeaf}
+            folder=""
             modelAlias={prefs.modelAlias}
             onModelAlias={prefs.setModelAlias}
             fastMode={prefs.fastMode}
             onFastMode={prefs.setFastMode}
+            effort={prefs.effort}
+            onEffort={prefs.setEffort}
             usedPercent={null}
             resetsAt={null}
-            onBypass={() => undefined}
+            bypassLabel={bypass ? 'Bypass on' : 'Bypass permissions'}
+            onBypass={() => { setBypass((value) => !value); if (!bypass) onNavigate('exec-approvals') }}
             onSend={onSend}
           />
         </>

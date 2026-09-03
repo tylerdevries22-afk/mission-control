@@ -11,6 +11,9 @@ export interface ChatPullRequest {
   updatedAt: string
   additions?: number
   deletions?: number
+  commits?: number
+  user?: string
+  kind?: 'pull'
 }
 
 export interface PullLike {
@@ -23,6 +26,8 @@ export interface PullLike {
   updated_at: string
   additions?: number
   deletions?: number
+  commits?: number
+  user?: string
 }
 
 export function uniqueValidRepos(repos: Array<string | null | undefined>): string[] {
@@ -48,6 +53,8 @@ export function mapPull(repo: string, pr: PullLike): ChatPullRequest {
     updatedAt: pr.updated_at,
     additions: pr.additions,
     deletions: pr.deletions,
+    commits: pr.commits,
+    user: pr.user,
   }
 }
 

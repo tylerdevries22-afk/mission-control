@@ -10,7 +10,7 @@ import { getAllGatewaySessions, getAgentLiveStatuses } from '@/lib/sessions'
 import { requireRole } from '@/lib/auth'
 import { MODEL_CATALOG } from '@/lib/models'
 import { logger } from '@/lib/logger'
-import { detectProviderSubscriptions, getPrimarySubscription } from '@/lib/provider-subscriptions'
+import { detectProviderSubscriptions } from '@/lib/provider-subscriptions'
 import { APP_VERSION } from '@/lib/version'
 import { isHermesInstalled, scanHermesSessions } from '@/lib/hermes-sessions'
 import { registerMcAsDashboard } from '@/lib/gateway-runtime'
@@ -658,8 +658,12 @@ async function getCapabilities(request?: NextRequest, includeGlobalRuntime = tru
     }
   }
 
-  const subscriptions = detectProviderSubscriptions().active
-  const primary = getPrimarySubscription()
+  const detectedSubscriptions = detectProviderSubscriptions(false, false).active ?? {}
+  const subscriptions = detectedSubscriptions
+  const primary = detectedSubscriptions.anthropic
+    || detectedSubscriptions.openai
+    || Object.values(detectedSubscriptions)[0]
+    || null
   const subscription = primary ? {
     type: primary.type,
     provider: primary.provider,
@@ -728,7 +732,7 @@ async function getCapabilities(request?: NextRequest, includeGlobalRuntime = tru
 function isPortOpen(host: string, port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = new net.Socket()
-    const timeoutMs = 1500
+    const timeoutMs = 200
 
     const cleanup = () => {
       socket.removeAllListeners()

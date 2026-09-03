@@ -12,6 +12,9 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/lib/workspace-isolation', () => ({
   denyUnscopedResourceForStrictWorkspace: vi.fn(() => null),
 }))
+vi.mock('@/lib/rate-limit', () => ({
+  heavyLimiter: vi.fn(() => null),
+}))
 
 vi.mock('@/lib/command', () => ({
   runCommand: mocks.runCommand,
