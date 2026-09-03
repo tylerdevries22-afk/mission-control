@@ -19,6 +19,8 @@ import {
   NON_RETRYABLE_ERROR_CODES,
   shouldRetryWithoutDeviceIdentity,
   buildProtocolNegotiation,
+  calculateReconnectDelay,
+  GATEWAY_OPERATOR_SCOPES,
 } from '@/lib/websocket-utils'
 
 const log = createClientLogger('WebSocket')
@@ -73,6 +75,20 @@ const lastSeqRef: { current: number | null } = { current: null }
 const tokenOnlyFallbackRef: { current: boolean } = { current: false }
 const tokenOnlyFallbackTriedRef: { current: boolean } = { current: false }
 const wsPathFallbackTriedRef: { current: Set<string> } = { current: new Set() }
+const handshakeTimerRef: { current: ReturnType<typeof setTimeout> | undefined } = { current: undefined }
+const handshakeDeadlineRef: { current: ReturnType<typeof setTimeout> | undefined } = { current: undefined }
+const connectSentRef: { current: boolean } = { current: false }
+
+function clearHandshakeTimers() {
+  if (handshakeTimerRef.current) {
+    clearTimeout(handshakeTimerRef.current)
+    handshakeTimerRef.current = undefined
+  }
+  if (handshakeDeadlineRef.current) {
+    clearTimeout(handshakeDeadlineRef.current)
+    handshakeDeadlineRef.current = undefined
+  }
+}
 
 export function useWebSocket() {
   const maxReconnectAttempts = 10
@@ -215,6 +231,9 @@ export function useWebSocket() {
 
   // Send the connect handshake (async for Ed25519 device identity signing)
   const sendConnectHandshake = useCallback(async (ws: WebSocket, nonce?: string) => {
+    if (connectSentRef.current && !nonce) return
+    if (ws.readyState !== WebSocket.OPEN) return
+
     let device: {
       id: string
       publicKey: string
@@ -228,7 +247,7 @@ export function useWebSocket() {
     const clientId = DEFAULT_GATEWAY_CLIENT_ID
     const clientMode = 'ui'
     const role = 'operator'
-    const scopes = ['operator.admin']
+    const scopes = [...GATEWAY_OPERATOR_SCOPES]
     const authToken = authTokenRef.current || undefined
     const tokenForSignature = authToken ?? cachedToken ?? ''
 
@@ -284,8 +303,14 @@ export function useWebSocket() {
         deviceToken: tokenOnlyFallbackRef.current ? undefined : (cachedToken || undefined),
       }
     }
+    if (ws.readyState !== WebSocket.OPEN) return
+    connectSentRef.current = true
     log.info('Sending connect handshake')
-    ws.send(JSON.stringify(connectRequest))
+    try {
+      ws.send(JSON.stringify(connectRequest))
+    } catch (err) {
+      log.warn('Failed to send connect handshake:', err)
+    }
   }, [])
 
   // Parse and handle different gateway message types
@@ -375,6 +400,8 @@ export function useWebSocket() {
     // Handle connect challenge
     if (frame.type === 'event' && frame.event === 'connect.challenge') {
       log.info('Received connect challenge, sending handshake')
+      clearHandshakeTimers()
+      connectSentRef.current = false
       sendConnectHandshake(ws, frame.payload?.nonce)
       return
     }
@@ -382,6 +409,7 @@ export function useWebSocket() {
     // Handle connect response (handshake success)
     if (frame.type === 'res' && frame.ok && !handshakeCompleteRef.current) {
       log.info('Handshake complete')
+      clearHandshakeTimers()
       handshakeCompleteRef.current = true
       reconnectAttemptsRef.current = 0
       // Cache device token if returned by gateway
@@ -694,9 +722,11 @@ export function useWebSocket() {
     }
     reconnectUrl.current = normalizedUrl
     handshakeCompleteRef.current = false
+    connectSentRef.current = false
     manualDisconnectRef.current = false
     nonRetryableErrorRef.current = null
     lastSeqRef.current = null
+    clearHandshakeTimers()
 
     try {
       const ws = new WebSocket(normalizedUrl)
@@ -709,8 +739,17 @@ export function useWebSocket() {
           url: normalizedUrl,
           reconnectAttempts: 0
         })
-        // Wait for connect.challenge from server
         log.debug('Waiting for connect challenge')
+        handshakeTimerRef.current = setTimeout(() => {
+          if (!handshakeCompleteRef.current && ws.readyState === WebSocket.OPEN) {
+            sendConnectHandshake(ws)
+          }
+        }, 80)
+        handshakeDeadlineRef.current = setTimeout(() => {
+          if (!handshakeCompleteRef.current && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+            ws.close(4000, 'Handshake timeout')
+          }
+        }, 2000)
       }
 
       ws.onmessage = (event) => {
@@ -734,6 +773,8 @@ export function useWebSocket() {
         const wasHandshakeComplete = handshakeCompleteRef.current
         setConnection({ isConnected: false })
         handshakeCompleteRef.current = false
+        connectSentRef.current = false
+        clearHandshakeTimers()
         stopHeartbeat()
 
         // Skip auto-reconnect if this was a manual disconnect
@@ -745,7 +786,8 @@ export function useWebSocket() {
         // tunnel connections that drop later are misclassified as initial
         // handshake failures and reconnect to /gateway-ws or /gw instead of
         // the last known-good URL.
-        if (!wasHandshakeComplete) {
+        const skipPathFallback = Boolean(nonRetryableErrorRef.current) || event.code === 4001 || event.code === 4002
+        if (!wasHandshakeComplete && !skipPathFallback) {
           const fallback = buildGatewayPathFallbackUrls(normalizedUrl).find(
             (candidate) => !wsPathFallbackTriedRef.current.has(candidate),
           )
@@ -761,7 +803,7 @@ export function useWebSocket() {
             })
             reconnectTimeoutRef.current = setTimeout(() => {
               connectRef.current(fallback, authTokenRef.current)
-            }, 250)
+            }, 0)
             return
           }
         }
@@ -782,8 +824,7 @@ export function useWebSocket() {
         // Auto-reconnect with exponential backoff (uses connectRef to avoid stale closure)
         const attempts = reconnectAttemptsRef.current
         if (attempts < maxReconnectAttempts) {
-          const base = Math.min(1000 * Math.pow(1.7, attempts), 15000)
-          const timeout = Math.round(base + Math.random() * base * 0.5)
+          const timeout = calculateReconnectDelay(attempts)
           log.info(`Reconnecting in ${timeout}ms (attempt ${attempts + 1}/${maxReconnectAttempts})`)
 
           reconnectAttemptsRef.current = attempts + 1
@@ -874,9 +915,11 @@ export function useWebSocket() {
   }, [])
 
   const reconnect = useCallback(() => {
+    tokenOnlyFallbackTriedRef.current = false
+    tokenOnlyFallbackRef.current = false
     disconnect()
     if (reconnectUrl.current) {
-      setTimeout(() => connect(reconnectUrl.current, authTokenRef.current), 1000)
+      setTimeout(() => connect(reconnectUrl.current, authTokenRef.current), 0)
     }
   }, [connect, disconnect])
 
