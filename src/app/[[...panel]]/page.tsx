@@ -442,18 +442,20 @@ export default function Home() {
     return <Loader variant="page" steps={isClient ? initSteps : undefined} />
   }
 
+  const isChatDesktop = !showOnboarding && normalizedPanel === 'chat'
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className={`flex h-screen overflow-hidden ${isChatDesktop ? '' : 'bg-background'}`}>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium">
         {tc('skipToMainContent')}
       </a>
 
       {/* Left: Icon rail navigation (hidden on mobile, shown as bottom bar instead) */}
-      {!showOnboarding && <NavRail />}
+      {!showOnboarding && !isChatDesktop && <NavRail />}
 
       {/* Center: Header + Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {!showOnboarding && (
+        {!showOnboarding && !isChatDesktop && (
           <>
             <HeaderBar />
             <LocalModeBanner />
@@ -464,11 +466,13 @@ export default function Home() {
         )}
         <main
           id="main-content"
-          className={`flex-1 overflow-auto pb-16 md:pb-0 ${showOnboarding ? 'pointer-events-none select-none blur-[2px] opacity-30' : ''}`}
+          className={isChatDesktop
+            ? 'flex-1 overflow-hidden'
+            : `flex-1 overflow-auto pb-16 md:pb-0 ${showOnboarding ? 'pointer-events-none select-none blur-[2px] opacity-30' : ''}`}
           role="main"
           aria-hidden={showOnboarding}
         >
-          <div aria-live="polite" className="flex flex-col min-h-full">
+          <div aria-live="polite" className={`flex flex-col ${isChatDesktop ? 'h-full' : 'min-h-full'}`}>
             <ErrorBoundary key={activeTab}>
               <ContentRouter tab={activeTab} />
             </ErrorBoundary>
@@ -478,14 +482,14 @@ export default function Home() {
       </div>
 
       {/* Right: Live feed (hidden on mobile) */}
-      {!showOnboarding && liveFeedOpen && (
+      {!showOnboarding && !isChatDesktop && liveFeedOpen && (
         <div className="hidden lg:flex h-full">
           <LiveFeed />
         </div>
       )}
 
       {/* Floating button to reopen LiveFeed when closed */}
-      {!showOnboarding && !liveFeedOpen && (
+      {!showOnboarding && !isChatDesktop && !liveFeedOpen && (
         <button
           onClick={toggleLiveFeed}
           className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-30 w-6 h-12 items-center justify-center bg-card border border-r-0 border-border rounded-l-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200"
@@ -498,7 +502,7 @@ export default function Home() {
       )}
 
       {/* Chat panel overlay */}
-      {!showOnboarding && <ChatPanel />}
+      {!showOnboarding && !isChatDesktop && <ChatPanel />}
 
       {/* Global exec approval overlay (shown regardless of active panel) */}
       {!showOnboarding && <ExecApprovalOverlay />}
