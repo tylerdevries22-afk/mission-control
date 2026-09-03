@@ -63,7 +63,7 @@ interface DoctorCacheModule {
 const doctorCache: DoctorCacheModule = (() => {
   // Allow operators to tune the TTL (e.g. CI smoke tests set it to 0).
   const fromEnv = Number.parseInt(process.env.MC_DOCTOR_TTL_MS || '', 10)
-  const ttlMs = Number.isFinite(fromEnv) && fromEnv >= 0 ? fromEnv : 30_000
+  const ttlMs = Number.isFinite(fromEnv) && fromEnv >= 0 ? fromEnv : 300_000
   return { cached: null, inFlight: null, ttlMs }
 })()
 
@@ -74,9 +74,9 @@ function invalidateDoctorCache(): void {
 
 async function runAndCacheDoctor(): Promise<CachedDoctor> {
   try {
-    const result = await runOpenClaw(['doctor'], { timeoutMs: 15000 })
+    const result = await runOpenClaw(['doctor'], { timeoutMs: 30000 })
     const payload = parseOpenClawDoctorOutput(
-      `${result.stdout}\n${result.stderr}`,
+      result.stdout,
       result.code ?? 0,
       { stateDir: config.openclawStateDir },
     )
@@ -86,9 +86,6 @@ async function runAndCacheDoctor(): Promise<CachedDoctor> {
   } catch (error) {
     const { detail, code } = getCommandDetail(error)
     if (isMissingOpenClaw(detail)) {
-      // Don't cache "not installed" — the operator may install OpenClaw and
-      // we want the next poll to pick that up immediately rather than waiting
-      // out the TTL.
       const entry: CachedDoctor = {
         payload: { error: 'OpenClaw is not installed or not reachable' },
         status: 400,
@@ -96,11 +93,11 @@ async function runAndCacheDoctor(): Promise<CachedDoctor> {
       }
       return entry
     }
-    const payload = parseOpenClawDoctorOutput(detail, code ?? 1, {
+    const err = error as { stdout?: string; stderr?: string }
+    const raw = [err.stdout, err.stderr].filter(Boolean).join('\n').trim() || detail.replace(/^Command failed[^:]*:\s*/i, '')
+    const payload = parseOpenClawDoctorOutput(raw, code ?? 1, {
       stateDir: config.openclawStateDir,
     })
-    // Cache the parsed-error payload (status 200) so a flapping doctor doesn't
-    // re-spawn on every poll. The payload itself carries the failure detail.
     const entry: CachedDoctor = { payload, status: 200, fetchedAt: Date.now() }
     doctorCache.cached = entry
     return entry
