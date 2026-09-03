@@ -16,6 +16,11 @@ interface CommandResult {
   code: number | null
 }
 
+export function redactCommandLine(command: string, args: string[]): string {
+  const safe = args.map((arg) => (arg.length > 24 || /[\s/'"`$]/.test(arg) ? '[redacted]' : arg))
+  return `${command} ${safe.join(' ')}`.trim()
+}
+
 export function runCommand(
   command: string,
   args: string[],
@@ -84,7 +89,7 @@ export function runCommand(
       }
       if (timedOut) {
         const error = new Error(
-          `Command timed out after ${options.timeoutMs}ms (${command} ${args.join(' ')}): ${stderr || stdout}`
+          `Command timed out after ${options.timeoutMs}ms (${redactCommandLine(command, args)}): ${stderr || stdout}`
         )
         ;(error as any).stdout = stdout
         ;(error as any).stderr = stderr
@@ -94,7 +99,7 @@ export function runCommand(
         return
       }
       const error = new Error(
-        `Command failed (${command} ${args.join(' ')}): ${stderr || stdout}`
+        `Command failed (${redactCommandLine(command, args)}): ${stderr || stdout}`
       )
       ;(error as any).stdout = stdout
       ;(error as any).stderr = stderr

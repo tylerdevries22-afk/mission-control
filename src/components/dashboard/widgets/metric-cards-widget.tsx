@@ -1,5 +1,6 @@
 'use client'
 
+import { EngineLogo } from '@/components/brand/engine-logo'
 import {
   MetricCard,
   SessionIcon,
@@ -51,7 +52,7 @@ export function MetricCardsWidget({ data }: { data: DashboardData }) {
           value={isClaudeLoading ? '...' : claudeActive}
           total={isClaudeLoading ? undefined : (claudeStats?.total_sessions ?? claudeLocalSessions.length)}
           subtitle="active sessions"
-          icon={<SessionIcon />}
+          icon={<EngineLogo engine="claude" size={20} />}
           color="blue"
         />
         <MetricCard
@@ -59,7 +60,7 @@ export function MetricCardsWidget({ data }: { data: DashboardData }) {
           value={isSessionsLoading ? '...' : codexActive}
           total={isSessionsLoading ? undefined : codexLocalSessions.length}
           subtitle="active sessions"
-          icon={<SessionIcon />}
+          icon={<EngineLogo engine="codex" size={20} />}
           color="green"
         />
         <MetricCard

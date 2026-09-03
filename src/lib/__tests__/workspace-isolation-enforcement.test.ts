@@ -144,12 +144,15 @@ describe('direct session API coverage', () => {
     const files = [
       'src/app/api/sessions/route.ts',
       'src/app/api/sessions/continue/route.ts',
+      'src/app/api/sessions/handoff/route.ts',
+      'src/app/api/sessions/archive/route.ts',
       'src/app/api/sessions/[id]/control/route.ts',
       'src/lib/session-transcript-route.ts',
       'src/app/api/sessions/transcript/gateway/route.ts',
       'src/app/api/sessions/transcript/aggregate/route.ts',
       'src/app/api/claude/sessions/route.ts',
       'src/app/api/chat/session-prefs/route.ts',
+      'src/app/api/models/access/route.ts',
     ]
 
     for (const file of files) {
