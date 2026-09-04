@@ -32,8 +32,11 @@ export function parseClaudeTranscriptLines(lines: string[], sessionId: string, l
       continue
     }
     if (entry.type === 'frame-link') {
-      const title = str(entry.title) || 'Artifact'
-      pushMessage(out, 'system', [{ type: 'artifact', title, url: str(entry.frameUrl) || undefined, path: str(entry.path) || undefined }], ts)
+      const title = str(entry.title)
+      const url = str(entry.frameUrl)
+      const filePath = str(entry.path)
+      if (!title && !url && !filePath) continue
+      pushMessage(out, 'system', [{ type: 'artifact', title: title || 'Artifact', url: url || undefined, path: filePath || undefined }], ts)
       continue
     }
     if (entry.type === 'user') parseUser(entry, out, ts)
@@ -48,7 +51,16 @@ export function parseClaudeTranscriptLines(lines: string[], sessionId: string, l
       pushMessage(out, 'assistant', parts, ts)
     }
   }
-  return dedupeConsecutiveText(attachToolResults(out)).slice(-Math.max(1, limit))
+  return keepLastArtifact(dedupeConsecutiveText(attachToolResults(out)), limit)
+}
+
+function keepLastArtifact(all: TranscriptMessage[], limit: number): TranscriptMessage[] {
+  const recent = all.slice(-Math.max(1, limit))
+  if (recent.some((row) => row.parts.some((part) => part.type === 'artifact'))) return recent
+  for (let index = all.length - 1; index >= 0; index -= 1) {
+    if (all[index].parts.some((part) => part.type === 'artifact')) return [all[index], ...recent]
+  }
+  return recent
 }
 
 export function readClaudeTranscript(sessionId: string, limit: number): TranscriptMessage[] {

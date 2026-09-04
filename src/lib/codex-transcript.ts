@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { config } from './config'
-import { findNamedJsonl, readJsonlTailLines } from './jsonl-tail'
+import { findNamedJsonl, readJsonlTailLines, TRANSCRIPT_TAIL_BYTES } from './jsonl-tail'
 import { pushMessage, textPart, type TranscriptMessage } from './session-transcript-types'
 
 function rec(value: unknown): Record<string, unknown> | null {
@@ -42,7 +42,7 @@ export function parseCodexTranscriptLines(lines: string[], sessionId: string, li
 export function readCodexTranscript(sessionId: string, limit: number): TranscriptMessage[] {
   const file = findCodexTranscriptFile(sessionId)
   if (!file) return []
-  return parseCodexTranscriptLines(readJsonlTailLines(file), sessionId, limit, true)
+  return parseCodexTranscriptLines(readJsonlTailLines(file, TRANSCRIPT_TAIL_BYTES), sessionId, limit, true)
 }
 
 function contentParts(content: unknown) {

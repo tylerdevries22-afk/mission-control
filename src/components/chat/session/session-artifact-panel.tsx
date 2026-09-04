@@ -30,9 +30,7 @@ export function SessionArtifactPanel({
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         {html ? (
-          <iframe title={artifact.title} srcDoc={html} sandbox="allow-scripts allow-same-origin" className="h-full w-full border-0 bg-white" />
-        ) : artifact.url ? (
-          <iframe title={artifact.title} src={artifact.url} className="h-full w-full border-0 bg-white" />
+          <iframe title={artifact.title} srcDoc={html} sandbox="allow-scripts" className="h-full w-full border-0 bg-white" />
         ) : markdown ? (
           <div className="h-full overflow-y-auto px-5 py-4 text-[var(--chat-text)]">
             <div className="chat-plan-prose">
@@ -40,7 +38,9 @@ export function SessionArtifactPanel({
             </div>
           </div>
         ) : (
-          <p className="px-5 py-4 text-[13px] text-[var(--chat-muted)]">No preview available.</p>
+          <p className="px-5 py-4 text-[13px] text-[var(--chat-muted)]">
+            {artifact.url ? 'Preview is local-only. Use Open to view this artifact.' : 'No preview available.'}
+          </p>
         )}
       </div>
     </aside>

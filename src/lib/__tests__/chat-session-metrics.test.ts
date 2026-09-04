@@ -36,6 +36,7 @@ describe('parseSessionTokens', () => {
     const parsed = parseSessionTokens('201.7m/1.4m')
     expect(parsed.used).toBe(203_100_000)
     expect(parsed.window).toBe(200_000)
+    expect(parsed.label).toBe('201.7m/1.4m')
     expect(contextPercent('201.7m/1.4m')).toBeNull()
   })
 
@@ -53,7 +54,7 @@ describe('parseSessionTokens', () => {
       used: 15_000,
       window: 200_000,
       percent: 8,
-      label: '15k',
+      label: '12k/3k',
     })
   })
 

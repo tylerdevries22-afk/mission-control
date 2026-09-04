@@ -30,7 +30,7 @@ export function parseSessionTokens(tokens: string | undefined): SessionTokenMetr
   const left = parseTokenCount(parts[0])
   const right = parts[1] ? parseTokenCount(parts[1]) : 0
   if (isInOutPair(left, right, explicit != null)) {
-    return metrics(left + right, DEFAULT_CONTEXT_WINDOW, explicit)
+    return metrics(left + right, DEFAULT_CONTEXT_WINDOW, explicit, `${formatTokenLabel(left)}/${formatTokenLabel(right)}`)
   }
   if (parts.length >= 2) return metrics(left, right, explicit)
   return metrics(left, 0, explicit)
@@ -86,9 +86,9 @@ function isInOutTokens(tokens: string): boolean {
   return isInOutPair(parseTokenCount(parts[0]), parseTokenCount(parts[1]), readExplicitPercent(tokens) != null)
 }
 
-function metrics(used: number, window: number, explicit: number | null): SessionTokenMetrics {
+function metrics(used: number, window: number, explicit: number | null, label?: string): SessionTokenMetrics {
   const percent = explicit != null ? explicit : window > 0 ? Math.round((used / window) * 100) : 0
-  return { used, window, percent, label: formatTokenLabel(used) }
+  return { used, window, percent, label: label ?? formatTokenLabel(used) }
 }
 
 function readExplicitPercent(tokens: string): number | null {

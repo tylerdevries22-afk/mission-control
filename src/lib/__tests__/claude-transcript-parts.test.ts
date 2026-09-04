@@ -44,6 +44,23 @@ describe('parseClaudeTranscriptLines', () => {
     expect(bash).toMatchObject({ type: 'tool_use', label: 'Run typecheck', input: 'pnpm tsc' })
   })
 
+  it('skips empty frame-links and keeps the last named artifact past the slice', () => {
+    const id = 'e4deed8c-8578-4c6d-a421-175443c87942'
+    const lines = [
+      JSON.stringify({
+        type: 'frame-link', sessionId: id, title: 'Franchise Readiness Register',
+        frameUrl: 'https://claude.ai/code/artifact/abc', path: '/private/tmp/plan.html',
+      }),
+      JSON.stringify({ type: 'frame-link', sessionId: id }),
+      JSON.stringify({ type: 'user', sessionId: id, message: { content: 'one' } }),
+      JSON.stringify({ type: 'user', sessionId: id, message: { content: 'two' } }),
+    ]
+    const parsed = parseClaudeTranscriptLines(lines, id, 2)
+    expect(parsed.some((row) => row.parts.some((part) => part.type === 'artifact' && part.title === 'Artifact'))).toBe(false)
+    expect(parsed.some((row) => row.parts.some((part) => part.type === 'artifact' && part.title === 'Franchise Readiness Register'))).toBe(true)
+    expect(parsed.filter((row) => row.role === 'user')).toHaveLength(2)
+  })
+
   it('drops task-notification user rows', () => {
     const id = 'e4deed8c-8578-4c6d-a421-175443c87942'
     const parsed = parseClaudeTranscriptLines([
