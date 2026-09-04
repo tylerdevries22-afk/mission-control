@@ -442,6 +442,8 @@ function AgentDetailModal({
                   <option value="openclaw">OpenClaw</option>
                   <option value="claude">Claude Code</option>
                   <option value="codex">Codex CLI</option>
+                  <option value="grok">Grok CLI</option>
+                  <option value="kimi">Kimi Code</option>
                   <option value="custom">{t('runtimeTypeCustom')}</option>
                 </select>
               ) : (
@@ -613,6 +615,8 @@ function CreateAgentModal({
                 <option value="openclaw">OpenClaw</option>
                 <option value="claude">Claude Code</option>
                 <option value="codex">Codex CLI</option>
+                <option value="grok">Grok CLI</option>
+                <option value="kimi">Kimi Code</option>
                 <option value="custom">{t('runtimeTypeCustom')}</option>
               </select>
             </div>

@@ -90,12 +90,22 @@ const categoryOrder = ['general', 'security', 'profiles', 'retention', 'chat', '
 // Dropdown options for subscription plan settings
 const subscriptionDropdowns: Record<string, { label: string; value: string }[]> = {
   'subscription.plan_override': [
-    { label: 'Auto-detect', value: '' },
+    { label: 'Auto-detect (Max 20x + Max 5x)', value: '' },
     { label: 'Pro ($20/mo)', value: 'pro' },
-    { label: 'Max ($100/mo)', value: 'max' },
-    { label: 'Max 5x ($200/mo)', value: 'max_5x' },
+    { label: 'Max 5x ($100/mo)', value: 'max_5x' },
+    { label: 'Max 20x ($200/mo)', value: 'max_20x' },
     { label: 'Team ($30/mo)', value: 'team' },
     { label: 'Enterprise', value: 'enterprise' },
+  ],
+  'subscription.claude_20x_plan': [
+    { label: 'Max 20x ($200/mo)', value: 'max_20x' },
+    { label: 'Max 5x ($100/mo)', value: 'max_5x' },
+    { label: 'Pro ($20/mo)', value: 'pro' },
+  ],
+  'subscription.claude_5x_plan': [
+    { label: 'Max 5x ($100/mo)', value: 'max_5x' },
+    { label: 'Max 20x ($200/mo)', value: 'max_20x' },
+    { label: 'Pro ($20/mo)', value: 'pro' },
   ],
   'subscription.codex_plan': [
     { label: 'None', value: '' },

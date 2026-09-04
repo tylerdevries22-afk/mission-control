@@ -8,6 +8,7 @@ import { scanForInjection } from './injection-guard'
 import { isHermesInstalled, isHermesGatewayRunning, clearHermesDetectionCache } from './hermes-sessions'
 import { isOpenCodeInstalled, getOpenCodeVersion, scanOpenCodeSessions } from './opencode-sessions'
 import { logger } from './logger'
+import { isPortOpenSync } from './tcp-port'
 import {
   isValidInstallerSha256,
   resolvePinnedUserToolSpec,
@@ -396,13 +397,23 @@ function detectOpenClaw(): RuntimeStatus {
     // binary not on PATH
   }
   const hasConfig = Boolean(config.openclawConfigPath && existsSync(config.openclawConfigPath))
+  let authenticated = false
+  if (hasConfig) {
+    try {
+      const parsed = JSON.parse(readFileSync(config.openclawConfigPath, 'utf8'))
+      const mode = parsed?.gateway?.auth?.mode
+      authenticated = mode === 'token' || mode === 'password'
+    } catch {
+      authenticated = false
+    }
+  }
   return {
     id: 'openclaw',
     ...meta,
     installed: binary || hasConfig,
     version,
-    running: binary,
-    authenticated: binary,
+    running: isPortOpenSync(config.gatewayHost, config.gatewayPort),
+    authenticated,
   }
 }
 

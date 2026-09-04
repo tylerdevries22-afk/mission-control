@@ -121,7 +121,7 @@ const groupTranslationKeys: Record<string, string> = {
 }
 
 const gatewayOnlyPanels = new Set([
-  'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
+  'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
 const adminOnlyPanels = new Set<string>([])
@@ -402,7 +402,7 @@ export function NavRail() {
                       <NavButton
                         key={item.id}
                         item={item}
-                        active={activeTab === item.id}
+                        active={activeTab === item.id || (item.id === 'memory' && activeTab === 'knowledge-graph')}
                         expanded={sidebarExpanded}
                         onClick={() => navigateToPanel(item.id)}
                         onPrefetch={() => prefetchPanel(item.id)}

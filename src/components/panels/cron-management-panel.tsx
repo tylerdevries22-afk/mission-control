@@ -10,6 +10,7 @@ import { apiFetch, ApiError } from '@/lib/api-client'
 const log = createClientLogger('CronManagement')
 import { buildDayKey, getCronOccurrences } from '@/lib/cron-occurrences'
 import { describeCronFrequency } from '@/lib/cron-utils'
+import { FLEET_AGENT_NAMES } from '@/lib/fleet-agents'
 
 interface DayJobSummary {
   job: CronJob
@@ -59,6 +60,7 @@ interface NewJobForm {
   description: string
   model: string
   staggerSeconds: string
+  agentId: string
 }
 
 interface FormErrors {
@@ -152,6 +154,7 @@ export function CronManagementPanel() {
     description: '',
     model: '',
     staggerSeconds: '',
+    agentId: 'claude-20x',
   })
 
   const formatRelativeTime = (timestamp: string | number, future = false) => {
@@ -464,6 +467,7 @@ export function CronManagementPanel() {
           command: newJob.command,
           ...(newJob.model.trim() ? { model: newJob.model.trim() } : {}),
           ...(staggerVal && staggerVal > 0 ? { staggerSeconds: staggerVal } : {}),
+          agentId: newJob.agentId,
         })
       })
 
@@ -474,6 +478,7 @@ export function CronManagementPanel() {
         description: '',
         model: '',
         staggerSeconds: '',
+        agentId: 'claude-20x',
       })
       setFormErrors({})
       setShowAddForm(false)
@@ -1454,6 +1459,19 @@ export function CronManagementPanel() {
                   className={`w-full px-3 py-2 border rounded-md bg-background text-foreground ${formErrors.name ? 'border-red-500' : 'border-border'}`}
                 />
                 {formErrors.name && <div className="mt-1 text-xs text-red-400">{formErrors.name}</div>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Agent</label>
+                <select
+                  value={newJob.agentId}
+                  onChange={(e) => setNewJob(prev => ({ ...prev, agentId: e.target.value }))}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                >
+                  {FLEET_AGENT_NAMES.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

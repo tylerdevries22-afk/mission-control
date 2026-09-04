@@ -1,5 +1,6 @@
 'use client'
 
+import { AgentAvatar } from '@/components/ui/agent-avatar'
 import type { DashboardData } from '../widget-primitives'
 
 /** Simple SVG sparkline from an array of numbers */
@@ -152,7 +153,8 @@ export function FleetStatusWidget({ data }: { data: DashboardData }) {
               }`}
             >
               {/* Name */}
-              <span className={`text-xs font-semibold w-16 shrink-0 ${row.color}`}>
+              <span className={`text-xs font-semibold w-20 shrink-0 ${row.color} flex items-center gap-1.5`}>
+                <AgentAvatar name={row.name} size="xs" />
                 {row.name}
               </span>
 

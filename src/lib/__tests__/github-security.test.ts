@@ -38,4 +38,13 @@ describe('githubFetch security boundary', () => {
       })
     )
   })
+
+  it('retries once on a 5xx response', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+
+    await expect(githubFetch('/repos/owner/repo')).resolves.toBeInstanceOf(Response)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
 })

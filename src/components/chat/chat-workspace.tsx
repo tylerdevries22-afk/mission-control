@@ -11,6 +11,7 @@ import { ChatInput } from './chat-input'
 import { Button } from '@/components/ui/button'
 import { SessionMessage, shouldShowTimestamp, type SessionTranscriptMessage } from './session-message'
 import { getSessionKindLabel, SessionKindAvatar } from './session-kind-brand'
+import { AgentAvatar } from '@/components/ui/agent-avatar'
 import { TerminalView } from '@/components/terminal/terminal-view'
 import { SplitPaneLayout, type SplitPane } from '@/components/terminal/split-pane-layout'
 
@@ -905,27 +906,6 @@ function extractApiErrorMessage(err: unknown, fallback: string): string {
     return fallback
   }
   return err instanceof Error ? err.message : fallback
-}
-
-function AgentAvatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
-  const colors: Record<string, string> = {
-    coordinator: 'bg-purple-500/20 text-purple-400',
-    aegis: 'bg-red-500/20 text-red-400',
-    research: 'bg-green-500/20 text-green-400',
-    ops: 'bg-orange-500/20 text-orange-400',
-    reviewer: 'bg-teal-500/20 text-teal-400',
-    content: 'bg-indigo-500/20 text-indigo-400',
-    human: 'bg-primary/20 text-primary',
-  }
-
-  const colorClass = colors[name.toLowerCase()] || 'bg-muted text-muted-foreground'
-  const sizeClass = size === 'sm' ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
-
-  return (
-    <div className={`${sizeClass} ${colorClass} flex shrink-0 items-center justify-center rounded-full font-bold`}>
-      {name.charAt(0).toUpperCase()}
-    </div>
-  )
 }
 
 function getConversationStatus(agents: Array<{ name: string; status: string }>, conversationId: string): string {

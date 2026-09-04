@@ -9,7 +9,9 @@ import { SignalPill, getLocalOsStatus, getProviderHealth, getMcHealth } from './
 import { OnboardingChecklistWidget } from './widgets/onboarding-checklist-widget'
 import { EmptyStateLaunchpad } from './empty-state-launchpad'
 import { WidgetGrid } from './widget-grid'
+import { FleetLogosStrip } from './widgets/fleet-logos-strip'
 import type { DbStats, ClaudeStats, LogLike, DashboardData } from './widget-primitives'
+import { claudeFleetPlanTotalUsd, formatClaudeFleetLabels } from '@/lib/claude-fleet-plans'
 
 export function Dashboard() {
   const {
@@ -27,18 +29,8 @@ export function Dashboard() {
   const navigateToPanel = useNavigateToPanel()
   const isLocal = dashboardMode === 'local'
 
-  const subscriptionLabel = subscription?.type
-    ? subscription.type.charAt(0).toUpperCase() + subscription.type.slice(1)
-    : null
-
-  const SUBSCRIPTION_PRICES: Record<string, Record<string, number>> = {
-    anthropic: { pro: 20, max: 100, max_5x: 200, team: 30, enterprise: 30 },
-    openai: { plus: 20, chatgpt: 20, pro: 200, team: 30, enterprise: 0 },
-  }
-
-  const subscriptionPrice = subscription?.provider && subscription?.type
-    ? SUBSCRIPTION_PRICES[subscription.provider]?.[subscription.type] ?? null
-    : null
+  const subscriptionLabel = formatClaudeFleetLabels()
+  const subscriptionPrice = claudeFleetPlanTotalUsd()
 
   const [systemStats, setSystemStats] = useState<any>(null)
   const [dbStats, setDbStats] = useState<DbStats | null>(null)
@@ -177,7 +169,7 @@ export function Dashboard() {
           id: `local-session-${session.id}-${ts}`,
           timestamp: ts,
           level: 'info',
-          source: session.kind === 'codex-cli' ? 'codex-local' : session.kind === 'hermes' ? 'hermes-local' : 'claude-local',
+          source: session.kind === 'codex-cli' ? 'codex-local' : session.kind === 'hermes' ? 'hermes-local' : session.kind === 'grok' ? 'grok-local' : session.kind === 'kimi' ? 'kimi-local' : 'claude-local',
           message: lastPrompt
             ? `Prompt: ${lastPrompt}`
             : `${session.active ? 'Active' : 'Idle'} session: ${session.key || session.id}`,
@@ -260,6 +252,7 @@ export function Dashboard() {
         taskCount={dbStats?.tasks.total ?? tasks.length}
         onNavigate={navigateToPanel}
       />
+      <FleetLogosStrip agents={agents} />
       <WidgetGrid data={dashboardData} />
     </div>
   )

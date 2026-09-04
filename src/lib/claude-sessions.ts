@@ -362,10 +362,10 @@ export async function syncClaudeSessions(force = false): Promise<{ ok: boolean; 
       const allRows = db.prepare('SELECT session_id FROM claude_sessions').all() as Array<{ session_id: string }>
       const del = db.prepare('DELETE FROM claude_sessions WHERE session_id = ?')
       for (const row of allRows) {
-        if (!liveIds.has(row.session_id)) {
-          del.run(row.session_id)
-          removed++
-        }
+        if (liveIds.has(row.session_id)) continue
+        if (/^(grok|kimi|codex|hermes|opencode):/.test(row.session_id)) continue
+        del.run(row.session_id)
+        removed++
       }
     })()
 

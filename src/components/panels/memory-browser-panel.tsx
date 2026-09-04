@@ -98,7 +98,11 @@ function statusBg(status: 'healthy' | 'warning' | 'critical'): string {
   return 'bg-red-500'
 }
 
-export function MemoryBrowserPanel() {
+export function MemoryBrowserPanel({
+  defaultView,
+}: {
+  defaultView?: 'files' | 'graph' | 'health' | 'pipeline' | 'hermes'
+} = {}) {
   const t = useTranslations('memoryBrowser')
   const {
     memoryFiles,
@@ -114,6 +118,7 @@ export function MemoryBrowserPanel() {
     setMemoryHealth
   } = useMissionControl()
   const isLocal = dashboardMode === 'local'
+  const initialView = defaultView ?? (!isLocal ? 'graph' : 'files')
 
   const [isLoading, setIsLoading] = useState(false)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
@@ -125,7 +130,7 @@ export function MemoryBrowserPanel() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [activeView, setActiveView] = useState<'files' | 'graph' | 'health' | 'pipeline' | 'hermes'>(!isLocal ? 'graph' : 'files')
+  const [activeView, setActiveView] = useState<'files' | 'graph' | 'health' | 'pipeline' | 'hermes'>(initialView)
   const [hermesMemory, setHermesMemory] = useState<{ agentMemory: string | null; userMemory: string | null; agentMemorySize: number; userMemorySize: number; agentMemoryEntries: number; userMemoryEntries: number } | null>(null)
   const [hermesInstalled, setHermesInstalled] = useState<boolean | null>(null)
   const [isLoadingHermes, setIsLoadingHermes] = useState(false)
@@ -157,7 +162,7 @@ export function MemoryBrowserPanel() {
     try {
       const data = await fetchTree({ depth: 1 })
       setMemoryFiles(data.tree || [])
-      setExpandedFolders(new Set(['daily', 'knowledge', 'memory', 'knowledge-base']))
+      setExpandedFolders(new Set(['daily', 'knowledge', 'memory', 'knowledge-base', 'omnia-vault', 'skills', 'openclaw']))
       setIsHydratingTree(true)
       void fetchTree()
         .then((fullData) => {

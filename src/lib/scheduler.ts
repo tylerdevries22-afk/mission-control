@@ -6,6 +6,7 @@ import { readdirSync, statSync, unlinkSync } from 'fs'
 import { logger } from './logger'
 import { processWebhookRetries } from './webhooks'
 import { syncClaudeSessions } from './claude-sessions'
+import { syncRuntimeHistory } from './runtime-history'
 import { pruneGatewaySessionsOlderThan, getAgentLiveStatuses } from './sessions'
 import { eventBus } from './event-bus'
 import { syncSkillsFromDisk } from './skill-sync'
@@ -13,6 +14,7 @@ import { syncLocalAgents } from './local-agent-sync'
 import { dispatchAssignedTasks, runAegisReviews, requeueStaleTasks, autoRouteInboxTasks, reconcileDeferredTaskCompletions } from './task-dispatch'
 import { spawnRecurringTasks } from './recurring-tasks'
 import { resolveSharedRuntimeWorkspaceId } from './workspace-isolation'
+import { evaluateAllRules } from './alert-evaluate'
 
 const BACKUP_DIR = join(dirname(config.dbPath), 'backups')
 
@@ -193,7 +195,7 @@ async function runHeartbeatCheck(): Promise<{ ok: boolean; message: string }> {
     // Mark stale agents as offline
     const markOffline = db.prepare('UPDATE agents SET status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?')
     const keepLocal = db.prepare('UPDATE agents SET last_seen = ?, status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?')
-    const localRuntimes = new Set(['claude', 'codex', 'custom'])
+    const localRuntimes = new Set(['claude', 'codex', 'grok', 'kimi', 'custom'])
     const logActivity = db.prepare(`
       INSERT INTO activities (type, entity_type, entity_id, actor, description, workspace_id)
       VALUES ('agent_status_change', 'agent', ?, 'heartbeat', ?, ?)
@@ -433,6 +435,15 @@ export function initScheduler() {
     running: false,
   })
 
+  tasks.set('alert_evaluate', {
+    name: 'Alert Evaluate',
+    intervalMs: TICK_MS,
+    lastRun: null,
+    nextRun: now + 35_000,
+    enabled: true,
+    running: false,
+  })
+
   // Start the tick loop
   tickInterval = setInterval(tick, TICK_MS)
   logger.info('Scheduler initialized - backup at ~3AM, cleanup at ~4AM, heartbeat every 5m, webhook/claude/skill/local-agent/gateway-agent sync every 60s')
@@ -468,8 +479,9 @@ async function tick() {
       : id === 'aegis_review' ? 'general.aegis_review'
       : id === 'recurring_task_spawn' ? 'general.recurring_task_spawn'
       : id === 'stale_task_requeue' ? 'general.stale_task_requeue'
+      : id === 'alert_evaluate' ? 'general.alert_evaluate'
       : 'general.agent_heartbeat'
-    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue'
+    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue' || id === 'alert_evaluate'
     if (!isSettingEnabled(settingKey, defaultEnabled)) continue
 
     task.running = true
@@ -477,7 +489,7 @@ async function tick() {
       const result = id === 'auto_backup' ? await runBackup()
         : id === 'agent_heartbeat' ? await runHeartbeatCheck()
         : id === 'webhook_retry' ? await processWebhookRetries()
-        : id === 'claude_session_scan' ? await syncClaudeSessions()
+        : id === 'claude_session_scan' ? await syncRuntimeHistory(syncClaudeSessions)
         : id === 'skill_sync' ? await syncSkillsFromDisk()
         : id === 'local_agent_sync' ? await syncLocalAgents()
         : id === 'gateway_agent_sync' ? await syncAgentsFromConfig('scheduled').then(async r => {
@@ -494,6 +506,11 @@ async function tick() {
         : id === 'aegis_review' ? await runAegisReviews()
         : id === 'recurring_task_spawn' ? await spawnRecurringTasks()
         : id === 'stale_task_requeue' ? await requeueStaleTasks()
+        : id === 'alert_evaluate' ? (() => {
+            const workspaceId = resolveSharedRuntimeWorkspaceId() ?? 1
+            const result = evaluateAllRules(getDatabase(), workspaceId)
+            return { ok: true, message: `Alerts: ${result.triggered}/${result.evaluated} triggered, seeded ${result.seeded}` }
+          })()
         : await runCleanup()
       task.lastResult = { ...result, timestamp: now }
     } catch (err: any) {
@@ -530,8 +547,9 @@ export function getSchedulerStatus() {
       : id === 'aegis_review' ? 'general.aegis_review'
       : id === 'recurring_task_spawn' ? 'general.recurring_task_spawn'
       : id === 'stale_task_requeue' ? 'general.stale_task_requeue'
+      : id === 'alert_evaluate' ? 'general.alert_evaluate'
       : 'general.agent_heartbeat'
-    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue'
+    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue' || id === 'alert_evaluate'
     result.push({
       id,
       name: task.name,
@@ -552,7 +570,7 @@ export async function triggerTask(taskId: string, workspaceId?: number): Promise
   if (taskId === 'auto_cleanup') return runCleanup()
   if (taskId === 'agent_heartbeat') return runHeartbeatCheck()
   if (taskId === 'webhook_retry') return processWebhookRetries()
-  if (taskId === 'claude_session_scan') return syncClaudeSessions()
+  if (taskId === 'claude_session_scan') return syncRuntimeHistory(syncClaudeSessions, true)
   if (taskId === 'skill_sync') return syncSkillsFromDisk()
   if (taskId === 'local_agent_sync') return syncLocalAgents(workspaceId)
   if (taskId === 'gateway_agent_sync') return syncAgentsFromConfig('manual', workspaceId).then(r => ({ ok: !r.error, message: r.error || `Gateway sync: ${r.created} created, ${r.updated} updated, ${r.synced} total` }))
@@ -560,6 +578,11 @@ export async function triggerTask(taskId: string, workspaceId?: number): Promise
   if (taskId === 'aegis_review') return runAegisReviews()
   if (taskId === 'recurring_task_spawn') return spawnRecurringTasks()
   if (taskId === 'stale_task_requeue') return requeueStaleTasks()
+  if (taskId === 'alert_evaluate') {
+    const resolved = workspaceId ?? resolveSharedRuntimeWorkspaceId() ?? 1
+    const result = evaluateAllRules(getDatabase(), resolved)
+    return { ok: true, message: `Alerts: ${result.triggered}/${result.evaluated} triggered, seeded ${result.seeded}` }
+  }
   return { ok: false, message: `Unknown task: ${taskId}` }
 }
 

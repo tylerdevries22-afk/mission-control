@@ -13,7 +13,8 @@ import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { getDatabase } from './db'
 import { logger } from './logger'
-import { LOCAL_SKILL_SOURCES, listSkillRoots } from './skill-roots'
+import { parseSkillDescription } from './skill-frontmatter'
+import { ALIAS_SKILL_SOURCES, LOCAL_SKILL_SOURCES, listExtraSkillRoots, listSkillRoots } from './skill-roots'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,15 +50,8 @@ function sha256(content: string): string {
   return createHash('sha256').update(content, 'utf8').digest('hex')
 }
 
-function extractDescription(content: string): string | undefined {
-  const lines = content.split('\n').map(l => l.trim()).filter(Boolean)
-  const first = lines.find(l => !l.startsWith('#'))
-  if (!first) return undefined
-  return first.length > 220 ? `${first.slice(0, 217)}...` : first
-}
-
 function getSkillRoots() {
-  return listSkillRoots()
+  return [...listSkillRoots(), ...listExtraSkillRoots()]
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +83,7 @@ function scanDiskSkills(): DiskSkill[] {
           name: entry,
           source: root.source,
           path: skillPath,
-          description: extractDescription(content),
+          description: parseSkillDescription(content),
           contentHash: sha256(content),
         })
       } catch {
@@ -117,7 +111,7 @@ export async function syncSkillsFromDisk(): Promise<{ ok: boolean; message: stri
     }
 
     // Fetch current DB rows (only local sources, not registry-installed via slug)
-    const localSources = [...LOCAL_SKILL_SOURCES]
+    const localSources = [...LOCAL_SKILL_SOURCES, 'grok-bundled', 'openclaw-plugin']
     // Also include any dynamic workspace-* sources from disk
     for (const s of diskSkills) {
       if (s.source.startsWith('workspace-') && !localSources.includes(s.source)) {
@@ -154,11 +148,21 @@ export async function syncSkillsFromDisk(): Promise<{ ok: boolean; message: stri
         if (!existing) {
           insertStmt.run(disk.name, disk.source, disk.path, disk.description || null, disk.contentHash, now, now)
           created++
-        } else if (existing.content_hash !== disk.contentHash) {
-          // Disk wins: content changed on disk since last sync
+        } else if (
+          existing.content_hash !== disk.contentHash
+          || existing.description !== (disk.description || null)
+        ) {
+          // Disk wins: content or parsed description changed since last sync
           updateStmt.run(disk.path, disk.description || null, disk.contentHash, now, disk.source, disk.name)
           updated++
         }
+      }
+
+      for (const source of ALIAS_SKILL_SOURCES) {
+        const gone = db.prepare(
+          'DELETE FROM skills WHERE source = ? AND registry_slug IS NULL',
+        ).run(source)
+        deleted += Number(gone.changes || 0)
       }
 
       // DB → Disk: detect removals (skill deleted from disk since last sync)

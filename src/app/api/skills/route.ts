@@ -3,7 +3,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { access, lstat, mkdir, open, readFile, realpath, readdir, rename, rm } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join, relative } from 'node:path'
-import { listSkillRoots } from '@/lib/skill-roots'
+import { listExtraSkillRoots, listSkillRoots } from '@/lib/skill-roots'
+import { syncSkillsFromDisk } from '@/lib/skill-sync'
 import { requireRole } from '@/lib/auth'
 import { resolveWithin } from '@/lib/paths'
 import { checkSkillSecurity } from '@/lib/skill-registry'
@@ -61,11 +62,9 @@ async function extractDescription(skillPath: string): Promise<string | undefined
   const skillDocPath = join(skillPath, 'SKILL.md')
   if (!(await pathReadable(skillDocPath))) return undefined
   try {
+    const { parseSkillDescription } = await import('@/lib/skill-frontmatter')
     const content = await readFile(skillDocPath, 'utf8')
-    const lines = content.split('\n').map((line) => line.trim()).filter(Boolean)
-    const firstParagraph = lines.find((line) => !line.startsWith('#'))
-    if (!firstParagraph) return undefined
-    return firstParagraph.length > 220 ? `${firstParagraph.slice(0, 217)}...` : firstParagraph
+    return parseSkillDescription(content)
   } catch {
     return undefined
   }
@@ -96,7 +95,7 @@ async function collectSkillsFromDir(baseDir: string, source: string): Promise<Sk
 }
 
 function getSkillRoots(): SkillRoot[] {
-  return listSkillRoots()
+  return [...listSkillRoots(), ...listExtraSkillRoots()]
 }
 
 function normalizeSkillName(raw: string): string | null {
@@ -310,6 +309,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ source, name, security })
   }
+
+  await syncSkillsFromDisk()
 
   // Try DB-backed fast path first
   const dbSkills = getSkillsFromDB()

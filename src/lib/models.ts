@@ -74,8 +74,10 @@ export const MODEL_CATALOG: ModelConfig[] = [
     thinking: ['always_on'],
   },
   // Other providers — Moonshot list price via https://openrouter.ai/moonshotai/kimi-k2.5;
-  // Venice https://docs.venice.ai/overview/pricing.
-  { alias: 'kimi', name: 'moonshot/kimi-k2.5', provider: 'moonshot', description: 'Alternative provider', costPerMTok: { input: 0.6, output: 3.0 } },
+  // Venice https://docs.venice.ai/overview/pricing. SuperGrok / Kimi Code OAuth
+  // are subscription-billed, so catalog cost stays 0 to avoid fake API spend.
+  { alias: 'kimi', name: 'moonshot/kimi-code/k3', provider: 'moonshot', description: 'Kimi Code K3', costPerMTok: { input: 0, output: 0 }, contextWindow: 1_048_576 },
+  { alias: 'grok', name: 'xai/grok-4.6', provider: 'xai', description: 'Grok 4.6 SuperGrok', costPerMTok: { input: 0, output: 0 } },
   { alias: 'venice-llama-3.3-70b', name: 'venice/llama-3.3-70b', provider: 'venice', description: 'Venice AI Llama 3.3 70B', costPerMTok: { input: 0.7, output: 2.8 } },
 ]
 

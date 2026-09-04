@@ -575,7 +575,11 @@ export function MemoryTab({
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-300">
         <strong className="text-blue-200">{t('memoryBannerTitle')}</strong>{' '}
         {t('memoryBannerDesc')}{' '}
-        <Link href="/memory" className="text-blue-400 underline hover:text-blue-300">{t('memoryBrowserLink')}</Link> {t('memoryBannerPage')}
+        <Link href="/knowledge-graph" className="text-blue-400 underline hover:text-blue-300">knowledge graph</Link>
+        {' · '}
+        <Link href="/memory" className="text-blue-400 underline hover:text-blue-300">{t('memoryBrowserLink')}</Link>
+        {' · '}
+        MEMORY.md is on the Files tab. This field is SQLite working memory only.
       </div>
 
       {/* Memory Content */}
@@ -754,7 +758,12 @@ export function ActivityTab({ agent }: { agent: Agent }) {
   useEffect(() => {
     const fetchActivities = async () => {
       try {
-        const data = await apiFetch<{ activities?: any[] }>(`/api/activities?actor=${agent.name}&limit=50`)
+        const params = new URLSearchParams({
+          actor: agent.name,
+          entity_id: String(agent.id),
+          limit: '50',
+        })
+        const data = await apiFetch<{ activities?: any[] }>(`/api/activities?${params.toString()}`)
         setActivities(data.activities || [])
       } catch (error) {
         log.error('Failed to fetch activities:', error)
@@ -2613,7 +2622,7 @@ export function ChannelsTab({ agent }: { agent: Agent }) {
         <div>
           <h4 className="text-lg font-medium text-foreground">{t('channelStatus')}</h4>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {t('channelStatusDesc', { agent: agent.name })}
+            Fleet-wide OpenClaw channels — not bound to {agent.name} until gateway accounts are per-agent.
           </p>
         </div>
         <Button onClick={loadChannels} size="sm" variant="secondary" disabled={loading}>
@@ -2681,6 +2690,7 @@ interface AgentCronJob {
 export function CronTab({ agent }: { agent: Agent }) {
   const t = useTranslations('agentDetail')
   const [allJobs, setAllJobs] = useState<AgentCronJob[]>([])
+  const [automations, setAutomations] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
@@ -2691,6 +2701,12 @@ export function CronTab({ agent }: { agent: Agent }) {
     try {
       const data = await apiFetch<{ jobs?: AgentCronJob[] }>('/api/cron?action=list')
       setAllJobs(data.jobs || [])
+      try {
+        const inventory = await apiFetch<{ automations?: string[] }>(`/api/agents/${agent.id}/inventory`)
+        setAutomations(inventory.automations || [])
+      } catch {
+        setAutomations([])
+      }
     } catch (err: any) {
       // Preserve the original generic failure message.
       setError(extractApiErrorMessage(err, 'Failed to load cron jobs'))
@@ -2750,6 +2766,12 @@ export function CronTab({ agent }: { agent: Agent }) {
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm">
           {error}
+        </div>
+      )}
+
+      {automations.length > 0 && (
+        <div className="rounded-lg border border-border p-3 text-xs text-muted-foreground">
+          CLI automations for {agent.name}: {automations.join(', ')}
         </div>
       )}
 

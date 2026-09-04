@@ -43,7 +43,9 @@ const settingDefinitions: Record<string, { category: string; description: string
   'general.backup_retention_count': { category: 'general', description: 'Number of backup files to keep', default: '10' },
 
   // Subscription overrides
-  'subscription.plan_override': { category: 'general', description: 'Override auto-detected subscription plan (e.g. max, max_5x, pro)', default: '' },
+  'subscription.plan_override': { category: 'general', description: 'Legacy single-plan override. Cost and Integrations always show Max 20x and Max 5x.', default: '' },
+  'subscription.claude_20x_plan': { category: 'general', description: 'Personal Claude Max 20x plan', default: 'max_20x' },
+  'subscription.claude_5x_plan': { category: 'general', description: 'Stillpoint Claude Max 5x plan', default: 'max_5x' },
   'subscription.codex_plan': { category: 'general', description: 'Codex/OpenAI subscription plan (e.g. chatgpt, plus, pro)', default: '' },
 
   // Interface
