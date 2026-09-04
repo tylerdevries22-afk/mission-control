@@ -41,14 +41,14 @@ const SESSION_KIND_META: Record<SessionKind, {
     label: 'Grok',
     shortLabel: 'GX',
     pillClassName: 'bg-orange-500/15 text-orange-300/80',
-    imageSrc: '/brand/grok-logo.svg',
+    imageSrc: '/brand/grok-logo.png',
     imageAlt: 'Grok logo',
   },
   kimi: {
     label: 'Kimi',
     shortLabel: 'KM',
     pillClassName: 'bg-violet-500/15 text-violet-300/80',
-    imageSrc: '/brand/kimi-logo.svg',
+    imageSrc: '/brand/kimi-logo.png',
     imageAlt: 'Kimi logo',
   },
   gateway: {
@@ -80,7 +80,7 @@ export function SessionKindAvatar({
   if (meta.imageSrc) {
     return (
       <div
-        className={`${sizeClassName} relative overflow-hidden rounded-full border border-border/50 bg-surface-2 shrink-0`}
+        className={`${sizeClassName} relative overflow-hidden rounded-[6px] border border-border/50 bg-surface-2 shrink-0`}
         title={meta.label}
         aria-label={meta.label}
       >

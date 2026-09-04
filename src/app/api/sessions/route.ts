@@ -1,35 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAllGatewaySessions } from '@/lib/sessions'
 import { syncClaudeSessions } from '@/lib/claude-sessions'
-import { db_helpers } from '@/lib/db'
+import { getDatabase, db_helpers } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { callOpenClawGateway } from '@/lib/openclaw-gateway'
-import { mutationLimiter } from '@/lib/rate-limit'
+import { mutationLimiter, readLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 import { denyUnscopedResourceForStrictWorkspace } from '@/lib/workspace-isolation'
-import { listNormalizedLocalSessions } from '@/lib/local-session-list'
-import { matchesSessionFilters } from '@/lib/session-record'
-import { dedupeAndSortSessions, mapGatewaySessions } from '@/lib/session-merge'
+import { projectSlugOf } from '@/lib/chat-session-identity'
+import { collectLocalSessions, mapGatewaySessions } from '@/lib/session-list-merge'
+import { dedupeAndSortSessions } from '@/lib/session-list-balance'
+import { scheduleSessionArchive } from '@/lib/session-archive-schedule'
 
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
   const isolationDenied = denyUnscopedResourceForStrictWorkspace(auth.user, 'local_sessions', new URL(request.url).pathname)
   if (isolationDenied) return isolationDenied
+  const rateCheck = readLimiter(request)
+  if (rateCheck) return rateCheck
 
   try {
-    const { searchParams } = new URL(request.url)
-    const filters = {
-      agent: searchParams.get('agent') || undefined,
-      project: searchParams.get('project') || undefined,
-      active: searchParams.get('active') || undefined,
-      environment: searchParams.get('environment') || undefined,
-    }
-    await syncClaudeSessions()
-    const localMerged = listNormalizedLocalSessions(filters)
     const mappedGatewaySessions = mapGatewaySessions(getAllGatewaySessions())
-      .filter((session) => matchesSessionFilters(session, filters))
-    const merged = dedupeAndSortSessions([...mappedGatewaySessions, ...localMerged])
+    let localMerged = collectLocalSessions()
+    const hasClaude = localMerged.some((session) => session.kind === 'claude-code')
+    if (!hasClaude) {
+      await syncClaudeSessions()
+      localMerged = collectLocalSessions()
+    } else {
+      void syncClaudeSessions()
+    }
+    if (mappedGatewaySessions.length === 0 && localMerged.length === 0) {
+      return NextResponse.json({ sessions: [] })
+    }
+    const search = new URL(request.url).searchParams
+    const project = search.get('project')?.trim().toLowerCase() || ''
+    let merged = dedupeAndSortSessions([...mappedGatewaySessions, ...localMerged])
+    if (search.get('include') === 'archived') {
+      try {
+        const { listArchivedSessions } = await import('@/lib/session-archive-index')
+        merged = dedupeAndSortSessions([...merged, ...listArchivedSessions(getDatabase(), project || undefined)])
+      } catch (err) {
+        logger.warn({ err }, 'Archived session merge skipped')
+      }
+    }
+    if (project) {
+      merged = merged.filter((session) => projectSlugOf(typeof session.workingDir === 'string' ? session.workingDir : null) === project)
+    }
+    scheduleSessionArchive(merged)
     return NextResponse.json({ sessions: merged })
   } catch (error) {
     logger.error({ err: error }, 'Sessions API error')
@@ -122,9 +140,10 @@ export async function POST(request: NextRequest) {
     )
 
     return NextResponse.json({ success: true, action, sessionKey, result })
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Session POST error')
-    return NextResponse.json({ error: error.message || 'Session action failed' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Session action failed'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -157,9 +176,10 @@ export async function DELETE(request: NextRequest) {
     )
 
     return NextResponse.json({ success: true, sessionKey, result })
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Session DELETE error')
-    return NextResponse.json({ error: error.message || 'Session deletion failed' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Session deletion failed'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 

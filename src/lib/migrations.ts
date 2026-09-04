@@ -1550,6 +1550,34 @@ const migrations: Migration[] = [
         db.exec(`ALTER TABLE agents ADD COLUMN claude_base_session_created_at TEXT DEFAULT NULL`)
       }
     }
+  },
+  {
+    id: '056_session_transcripts',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS session_transcripts (
+          kind TEXT NOT NULL,
+          session_id TEXT NOT NULL,
+          project_slug TEXT NOT NULL,
+          model TEXT,
+          path TEXT NOT NULL,
+          updated_at INTEGER,
+          message_count INTEGER DEFAULT 0,
+          last_user_prompt TEXT,
+          working_dir TEXT,
+          PRIMARY KEY (kind, session_id)
+        )
+      `)
+    }
+  },
+  {
+    id: '057_claude_session_custom_title',
+    up(db: Database.Database) {
+      const cols = db.prepare(`PRAGMA table_info(claude_sessions)`).all() as Array<{ name: string }>
+      if (!cols.some((col) => col.name === 'custom_title')) {
+        db.exec(`ALTER TABLE claude_sessions ADD COLUMN custom_title TEXT DEFAULT NULL`)
+      }
+    }
   }
 ]
 

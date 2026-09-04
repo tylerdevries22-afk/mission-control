@@ -51,6 +51,7 @@ describe('scanGrokSessions', () => {
       model: 'grok-4.6',
       userMessages: 4,
       lastUserPrompt: 'Synced agents',
+      title: 'Vault handoff',
       isActive: true,
     })
   })

@@ -53,8 +53,46 @@ describe('scanKimiSessions', () => {
       projectSlug: 'actz-may',
       model: 'kimi-code/k3',
       lastUserPrompt: 'review the fleet map',
+      title: 'fleet review',
       isActive: true,
     })
+  })
+
+  it('parses ISO timestamps and workDir', async () => {
+    const sessionDir = join(tempHome, '.kimi-code', 'sessions', 'wd_dev', 'session_iso')
+    mkdirSync(sessionDir, { recursive: true })
+    writeFileSync(join(tempHome, '.kimi-code', 'session_index.jsonl'), `${JSON.stringify({
+      sessionId: 'session_iso',
+      sessionDir,
+      workDir: '/Users/dev/stillpoint-builders',
+    })}\n`)
+    writeFileSync(join(sessionDir, 'state.json'), JSON.stringify({
+      title: 'Gate review',
+      workDir: '/Users/dev/stillpoint-builders',
+      createdAt: '2026-07-30T21:47:41.386Z',
+      updatedAt: new Date().toISOString(),
+      lastPrompt: 'Cover the connector',
+    }))
+
+    const { scanKimiSessions } = await import('@/lib/kimi-sessions')
+    const sessions = scanKimiSessions(10)
+    expect(sessions[0]).toMatchObject({
+      sessionId: 'session_iso',
+      projectSlug: 'stillpoint-builders',
+      lastUserPrompt: 'Cover the connector',
+      isActive: true,
+    })
+  })
+
+  it('ignores sessionDir outside the home directory', async () => {
+    mkdirSync(join(tempHome, '.kimi-code'), { recursive: true })
+    writeFileSync(join(tempHome, '.kimi-code', 'session_index.jsonl'), `${JSON.stringify({
+      sessionId: 'session_escape',
+      sessionDir: '/etc',
+      workDir: '/etc',
+    })}\n`)
+    const { scanKimiSessions } = await import('@/lib/kimi-sessions')
+    expect(scanKimiSessions()).toEqual([])
   })
 
   it('ignores kimi-claw sibling sessions', async () => {

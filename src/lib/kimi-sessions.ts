@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { config } from './config'
 import { logger } from './logger'
+import { isSafeHomePath, realpathInside } from './safe-home-path'
 
 const ACTIVE_THRESHOLD_MS = 15 * 60 * 1000
 const DEFAULT_FILE_SCAN_LIMIT = 100
@@ -20,6 +21,7 @@ export interface KimiSessionStats {
   firstMessageAt: string | null
   lastMessageAt: string | null
   lastUserPrompt: string | null
+  title: string | null
   isActive: boolean
 }
 
@@ -30,10 +32,6 @@ function asObject(value: unknown): Record<string, unknown> | null {
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null
-}
-
-function asNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
 function clampTimestamp(ms: number): number {
@@ -48,7 +46,18 @@ function toMs(value: number | null): number {
   return value < 1e12 ? value * 1000 : value
 }
 
-function isClawPath(value: string | null): boolean {
+function timestampMs(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return clampTimestamp(toMs(value))
+  if (typeof value === 'string' && value.trim()) {
+    const numeric = Number(value)
+    if (Number.isFinite(numeric) && numeric > 0) return clampTimestamp(toMs(numeric))
+    const parsed = Date.parse(value)
+    return Number.isFinite(parsed) ? clampTimestamp(parsed) : 0
+  }
+  return 0
+}
+
+export function isKimiClawPath(value: string | null): boolean {
   if (!value) return false
   return value.includes('/.kimi/kimi-claw/') || value.includes('kimi-claw')
 }
@@ -59,7 +68,8 @@ function parseIndexLine(line: string): { sessionId: string; sessionDir: string; 
     if (!row) return null
     const sessionId = asString(row.sessionId)
     const sessionDir = asString(row.sessionDir)
-    if (!sessionId || !sessionDir || isClawPath(sessionDir)) return null
+    if (!sessionId || !sessionDir || isKimiClawPath(sessionDir)) return null
+    if (!isSafeHomePath(sessionDir, config.homeDir) || !realpathInside(sessionDir, config.homeDir)) return null
     return { sessionId, sessionDir, workDir: asString(row.workDir) }
   } catch {
     return null
@@ -75,12 +85,13 @@ function parseState(sessionDir: string, fallback: { sessionId: string; workDir: 
   }
   const data = asObject(parsed)
   if (!data) return null
-  const projectPath = asString(data.cwd) || fallback.workDir
-  const createdMs = clampTimestamp(toMs(asNumber(data.createdAt)))
-  const updatedMs = clampTimestamp(toMs(asNumber(data.updatedAt)))
+  const projectPath = asString(data.cwd) || asString(data.workDir) || fallback.workDir
+  const createdMs = timestampMs(data.createdAt)
+  const updatedMs = timestampMs(data.updatedAt)
   const lastMs = updatedMs || createdMs
   if (!lastMs) return null
   const lastUserPrompt = asString(data.lastPrompt) || asString(data.title)
+  const title = asString(data.title) || lastUserPrompt
   return {
     sessionId: asString(data.id) || fallback.sessionId,
     projectSlug: projectPath ? basename(projectPath) : 'kimi-local',
@@ -93,6 +104,7 @@ function parseState(sessionDir: string, fallback: { sessionId: string; workDir: 
     firstMessageAt: createdMs ? new Date(createdMs).toISOString() : null,
     lastMessageAt: new Date(lastMs).toISOString(),
     lastUserPrompt,
+    title,
     isActive: (Date.now() - lastMs) < ACTIVE_THRESHOLD_MS,
   }
 }

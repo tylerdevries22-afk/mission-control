@@ -9,6 +9,7 @@ import { createClientLogger } from '@/lib/client-logger'
 import { apiFetch } from '@/lib/api-client'
 import { CLAUDE_FLEET_PLANS, type ClaudeFleetPlanStatus } from '@/lib/claude-fleet-plans'
 import { CostFleetPlans } from '@/components/panels/cost-fleet-plans'
+import { EngineLogoForText } from '@/components/brand/engine-logo'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
@@ -447,7 +448,10 @@ function OverviewView({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="bg-secondary rounded-lg p-4">
               <div className="text-xs text-muted-foreground mb-1">{t('mostEfficientModel')}</div>
-              <div className="text-lg font-bold text-green-500">{mostEfficient ? getModelDisplayName(mostEfficient[0]) : '-'}</div>
+              <div className="flex items-center gap-2 text-lg font-bold text-green-500">
+                {mostEfficient && <EngineLogoForText text={mostEfficient[0]} size={18} />}
+                {mostEfficient ? getModelDisplayName(mostEfficient[0]) : '-'}
+              </div>
               {mostEfficient && <div className="text-xs text-muted-foreground">${(efficientCostPerToken * 1000).toFixed(4)}/1K tokens</div>}
             </div>
             <div className="bg-secondary rounded-lg p-4">
@@ -467,7 +471,10 @@ function OverviewView({
               const maxCostPer1k = Math.max(...modelData.map(d => d.cost / Math.max(1, d.tokens) * 1000), 0.0001)
               return (
                 <div key={m.fullName} className="flex items-center text-sm">
-                  <div className="w-32 truncate text-muted-foreground">{m.name}</div>
+                  <div className="flex w-32 items-center gap-1.5 truncate text-muted-foreground">
+                    <EngineLogoForText text={m.fullName || m.name} size={14} />
+                    <span className="truncate">{m.name}</span>
+                  </div>
                   <div className="flex-1 mx-3">
                     <div className="w-full bg-secondary rounded-full h-2">
                       <div className="bg-green-500 h-2 rounded-full" style={{ width: `${(costPer1k / maxCostPer1k) * 100}%` }} />

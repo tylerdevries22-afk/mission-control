@@ -1,5 +1,7 @@
 'use client'
 
+import { EngineLogo } from '@/components/brand/engine-logo'
+import { inferEngineFromText } from '@/lib/chat-model-groups'
 import { brandFromAgent, brandLogo } from '@/lib/agent-brand'
 
 interface AgentAvatarProps {
@@ -40,6 +42,13 @@ const sizeClasses: Record<NonNullable<AgentAvatarProps['size']>, string> = {
   lg: 'w-10 h-10 text-sm',
 }
 
+const logoSize: Record<NonNullable<AgentAvatarProps['size']>, number> = {
+  xs: 20,
+  sm: 24,
+  md: 32,
+  lg: 40,
+}
+
 export function AgentAvatar({
   name,
   runtimeType,
@@ -47,9 +56,21 @@ export function AgentAvatar({
   className = '',
 }: AgentAvatarProps) {
   const safeName = name ?? ''
+  const engine = inferEngineFromText(safeName) || inferEngineFromText(runtimeType || '')
+  if (engine) {
+    return (
+      <span
+        className={`inline-flex shrink-0 overflow-hidden rounded-[6px] ${sizeClasses[size]} ${className}`}
+        title={safeName}
+        aria-label={safeName || 'Agent'}
+      >
+        <EngineLogo engine={engine} size={logoSize[size]} className="h-full w-full rounded-[6px]" />
+      </span>
+    )
+  }
+
   const logo = brandLogo(brandFromAgent(safeName, runtimeType))
   const box = `rounded-full flex items-center justify-center font-semibold shrink-0 overflow-hidden border border-border/50 ${sizeClasses[size]} ${className}`
-
   if (logo) {
     return (
       <div className={`${box} bg-surface-2`} title={safeName} aria-label={safeName || logo.alt}>

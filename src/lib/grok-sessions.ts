@@ -19,6 +19,7 @@ export interface GrokSessionStats {
   firstMessageAt: string | null
   lastMessageAt: string | null
   lastUserPrompt: string | null
+  title: string | null
   isActive: boolean
 }
 
@@ -46,9 +47,11 @@ function listSummaryFiles(limit: number): Array<{ path: string; mtimeMs: number 
   const root = join(config.homeDir, '.grok', 'sessions')
   const files: Array<{ path: string; mtimeMs: number }> = []
   const stack = [root]
-  while (stack.length > 0) {
+  let visited = 0
+  while (stack.length > 0 && visited < 4000) {
     const dir = stack.pop()
     if (!dir) continue
+    visited += 1
     let entries: string[]
     try {
       entries = readdirSync(dir)
@@ -93,6 +96,7 @@ function parseSummary(filePath: string, fileMtimeMs: number): GrokSessionStats |
   const created = asString(data.created_at)
   const lastActive = asString(data.last_active_at) || asString(data.updated_at)
   const lastUserPrompt = asString(data.last_turn_summary) || asString(data.session_summary)
+  const title = asString(data.session_summary) || lastUserPrompt
   const parsedFirstMs = created ? clampTimestamp(new Date(created).getTime()) : 0
   const parsedLastMs = lastActive ? clampTimestamp(new Date(lastActive).getTime()) : 0
   const mtimeMs = clampTimestamp(fileMtimeMs)
@@ -111,6 +115,7 @@ function parseSummary(filePath: string, fileMtimeMs: number): GrokSessionStats |
     firstMessageAt: effectiveFirstMs ? new Date(effectiveFirstMs).toISOString() : null,
     lastMessageAt: effectiveLastMs ? new Date(effectiveLastMs).toISOString() : null,
     lastUserPrompt,
+    title,
     isActive: effectiveLastMs > 0 && (Date.now() - effectiveLastMs) < ACTIVE_THRESHOLD_MS,
   }
 }
