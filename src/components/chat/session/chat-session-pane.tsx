@@ -1,7 +1,7 @@
 'use client'
 
 import { isTreeKind } from '@/lib/chat-session-identity'
-import { contextPercent, formatDuration, formatTokenLabel, parseSessionTokens, sessionDurationMs } from '@/lib/chat-session-metrics'
+import { contextPercent, formatDuration, parseSessionTokens, sessionDurationMs } from '@/lib/chat-session-metrics'
 import type { ChatPullRequest } from '@/lib/github-pulls'
 import type { Conversation } from '@/store'
 import { HandoffBanner, transcriptExcerpt } from './handoff-banner'
@@ -47,7 +47,7 @@ export function ChatSessionPane({
         <SessionThread messages={messages} />
       </div>
       <SessionStatusBar
-        tokens={parsed.label !== '0' ? formatTokenLabel(parsed.used) : session.tokens}
+        tokens={parsed.label !== '0' ? parsed.label : session.tokens}
         duration={duration}
         percent={percent}
         status={session.active ? 'Active' : 'Idle'}

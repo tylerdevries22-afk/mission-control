@@ -2,7 +2,7 @@ import { existsSync, openSync, readSync, closeSync, readdirSync, statSync } from
 import { join } from 'node:path'
 
 export const DEFAULT_TAIL_BYTES = 768 * 1024
-export const TRANSCRIPT_TAIL_BYTES = 3 * 1024 * 1024
+export const TRANSCRIPT_TAIL_BYTES = 8 * 1024 * 1024
 
 export const SESSION_ID_RE = /^[a-zA-Z0-9._:-]{6,128}$/
 

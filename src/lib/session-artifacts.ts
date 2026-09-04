@@ -12,6 +12,7 @@ export function extractSessionArtifacts(messages: TranscriptMessage[]): SessionA
   for (const message of messages) {
     for (const part of message.parts) {
       if (part.type === 'artifact') {
+        if (!part.url && !part.path && (!part.title || part.title === 'Artifact')) continue
         const key = part.url || part.path || part.title
         if (!key || seen.has(key)) continue
         seen.add(key)
