@@ -9652,6 +9652,93 @@
         }
       }
     },
+    "/api/chat/folder-order": {
+      "get": {
+        "tags": ["API"],
+        "summary": "Get shared chat folder order",
+        "operationId": "get_api_chat_folder_order",
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found" },
+          "500": { "description": "Internal server error" }
+        }
+      },
+      "put": {
+        "tags": ["API"],
+        "summary": "Replace shared chat folder order",
+        "operationId": "put_api_chat_folder_order",
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found" },
+          "500": { "description": "Internal server error" }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/permission-mode": {
+      "get": {
+        "tags": ["API"],
+        "summary": "Get chat permission mode",
+        "operationId": "get_api_chat_permission_mode",
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found" },
+          "500": { "description": "Internal server error" }
+        }
+      },
+      "put": {
+        "tags": ["API"],
+        "summary": "Set chat permission mode",
+        "operationId": "put_api_chat_permission_mode",
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found" },
+          "500": { "description": "Internal server error" }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/usage": {
+      "get": {
+        "tags": ["API"],
+        "summary": "Get live chat usage tracker",
+        "operationId": "get_api_chat_usage",
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
     "/api/chat/session-prefs": {
       "get": {
         "tags": [

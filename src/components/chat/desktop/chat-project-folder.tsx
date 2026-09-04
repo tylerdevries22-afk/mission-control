@@ -59,7 +59,9 @@ export function ChatProjectFolder({
         </button>
         <button
           type="button"
-          className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-[var(--chat-muted)] hover:text-[var(--chat-text)]"
+          className={`flex h-5 w-5 cursor-pointer items-center justify-center rounded text-[var(--chat-muted)] hover:text-[var(--chat-text)] ${
+            pinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100'
+          }`}
           onClick={() => onTogglePin(slug)}
           aria-label={pinned ? `Unpin ${row.label}` : `Pin ${row.label}`}
           aria-pressed={pinned}

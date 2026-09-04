@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { runCommand } from '@/lib/command'
 import { getOpenCodeExecutable } from '@/lib/opencode-sessions'
+import { parsePermissionMode, permissionArgv, type UnifiedPermissionMode } from '@/lib/permission-connector'
 import { resolveExecutable, resolveSessionCwd, shQuote } from '@/lib/session-handoff'
 
 export type ContinueKind = 'claude-code' | 'codex-cli' | 'opencode' | 'grok' | 'kimi'
@@ -46,7 +47,13 @@ async function touchSessionJsonl(sessionId: string): Promise<void> {
   } catch { /* best-effort */ }
 }
 
-async function runClaude(sessionId: string, prompt: string, modelId?: string, effort?: string): Promise<string> {
+async function runClaude(
+  sessionId: string,
+  prompt: string,
+  modelId?: string,
+  effort?: string,
+  permissionMode: UnifiedPermissionMode = 'ask',
+): Promise<string> {
   const sessionCwd = await resolveSessionCwd(sessionId)
   const claudeBin = await resolveExecutable('claude')
   const mode = hostMode()
@@ -61,6 +68,7 @@ async function runClaude(sessionId: string, prompt: string, modelId?: string, ef
     if (resume) args.push('--resume', sessionId)
     if (modelId) args.push('--model', modelId)
     if (effort) args.push('--effort', effort)
+    args.push(...permissionArgv('claude-code', permissionMode))
     const cmd = `cd ${shQuote(sessionCwd)} && exec ${shQuote(claudeBin)} ${args.map(shQuote).join(' ')}`
     return runCommand('sh', ['-c', cmd], { timeoutMs: 180000, input: prompt })
   }
@@ -78,9 +86,14 @@ async function runClaude(sessionId: string, prompt: string, modelId?: string, ef
   return (result.stdout || '').trim() || (result.stderr || '').trim()
 }
 
-async function runCodex(sessionId: string, prompt: string, modelId?: string): Promise<string> {
+async function runCodex(
+  sessionId: string,
+  prompt: string,
+  modelId?: string,
+  permissionMode: UnifiedPermissionMode = 'ask',
+): Promise<string> {
   const outputPath = path.join('/tmp', `mc-codex-last-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`)
-  const args = ['exec']
+  const args = ['exec', ...permissionArgv('codex-cli', permissionMode)]
   if (modelId) args.push('-m', modelId)
   args.push('resume', sessionId, '--skip-git-repo-check', '-o', outputPath)
   const cwd = await resolveSessionCwd(sessionId)
@@ -97,19 +110,21 @@ export async function runSessionContinue(input: {
   prompt: string
   modelId?: string
   effort?: string
+  permissionMode?: UnifiedPermissionMode
 }): Promise<string> {
-  if (input.kind === 'claude-code') return runClaude(input.sessionId, input.prompt, input.modelId, input.effort)
-  if (input.kind === 'codex-cli') return runCodex(input.sessionId, input.prompt, input.modelId)
+  const mode = parsePermissionMode(input.permissionMode)
+  if (input.kind === 'claude-code') return runClaude(input.sessionId, input.prompt, input.modelId, input.effort, mode)
+  if (input.kind === 'codex-cli') return runCodex(input.sessionId, input.prompt, input.modelId, mode)
   const cwd = await resolveSessionCwd(input.sessionId)
   if (input.kind === 'grok') {
-    const args = ['-p', '--resume', input.sessionId]
+    const args = ['-p', '--resume', input.sessionId, ...permissionArgv('grok', mode)]
     if (input.modelId) args.push('--model', input.modelId)
     if (input.effort) args.push('--effort', input.effort)
     const result = await runCommand(await resolveExecutable('grok'), args, { timeoutMs: 180000, input: input.prompt, cwd })
     return (result.stdout || '').trim() || (result.stderr || '').trim()
   }
   if (input.kind === 'kimi') {
-    const args = ['-S', input.sessionId, '-p']
+    const args = ['-S', input.sessionId, '-p', ...permissionArgv('kimi', mode)]
     if (input.modelId) args.push('-m', input.modelId)
     const result = await runCommand(await resolveExecutable('kimi'), args, { timeoutMs: 180000, input: input.prompt, cwd })
     return (result.stdout || '').trim() || (result.stderr || '').trim()

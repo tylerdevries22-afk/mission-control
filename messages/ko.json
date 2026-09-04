@@ -2296,6 +2296,8 @@
     "timeSpent": "{time}",
     "feedPull": "Pull",
     "feedPush": "Push",
-    "feedCommit": "Commit"
+    "feedCommit": "Commit",
+    "bypassOn": "Bypass on",
+    "resizeRail": "Resize project list"
   }
 }

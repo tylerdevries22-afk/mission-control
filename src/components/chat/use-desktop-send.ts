@@ -62,7 +62,7 @@ export function useDesktopSend(onSessionRefresh: () => void) {
   const sendSession = useCallback(async (
     prompt: string,
     session: NonNullable<Conversation['session']>,
-    options?: { model?: string; fast?: boolean; effort?: string },
+    options?: { model?: string; fast?: boolean; effort?: string; permissionMode?: string },
   ) => {
     setBusy(true)
     setError(null)
@@ -92,6 +92,7 @@ export function useDesktopSend(onSessionRefresh: () => void) {
             model: options?.model,
             fast: options?.fast,
             effort: options?.effort,
+            permissionMode: options?.permissionMode,
           }),
         })
         onSessionRefresh()

@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger'
 import { heavyLimiter } from '@/lib/rate-limit'
 import { denyUnscopedResourceForStrictWorkspace } from '@/lib/workspace-isolation'
 import { continueEffort, continueModelId } from '@/lib/session-continue-model'
+import { parsePermissionMode } from '@/lib/permission-connector'
 import { ContinueBusyError, isContinueKind, runSessionContinue } from '@/lib/session-continue-run'
 import { isSessionId } from '@/lib/session-handoff'
 
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
       prompt,
       modelId: continueModelId(kind, typeof body.model === 'string' ? body.model : '', body.fast === true),
       effort: continueEffort(kind, typeof body.effort === 'string' ? body.effort : ''),
+      permissionMode: parsePermissionMode(body.permissionMode),
     })
     return NextResponse.json({
       ok: true,

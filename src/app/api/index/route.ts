@@ -47,6 +47,9 @@ const endpoints: Endpoint[] = [
   { path: '/api/chat/messages/:id', methods: ['PATCH'], description: 'Mark chat message read', tag: 'Chat', auth: 'operator' },
   { path: '/api/chat/conversations', methods: ['GET'], description: 'List conversations', tag: 'Chat', auth: 'viewer' },
   { path: '/api/chat/session-prefs', methods: ['GET', 'PATCH'], description: 'Local session chat preferences (rename + color)', tag: 'Chat', auth: 'viewer/operator' },
+  { path: '/api/chat/folder-order', methods: ['GET', 'PUT'], description: 'Shared chat project folder order', tag: 'Chat', auth: 'viewer/operator' },
+  { path: '/api/chat/permission-mode', methods: ['GET', 'PUT'], description: 'Per-user chat permission mode', tag: 'Chat', auth: 'viewer/operator' },
+  { path: '/api/chat/usage', methods: ['GET'], description: 'Live chat usage tracker (context + rate limits)', tag: 'Chat', auth: 'viewer' },
 
   // ── Sessions ──────────────────────────────────────
   { path: '/api/sessions', methods: ['GET', 'POST', 'DELETE'], description: 'List and control gateway/local runtime sessions', tag: 'Sessions', auth: 'viewer/operator' },

@@ -48,7 +48,7 @@ export function ChatSidebar({
   now?: number
 }) {
   return (
-    <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden border-r border-[var(--chat-border)] bg-[var(--chat-sidebar)] md:flex">
+    <aside className="flex h-full w-full flex-col overflow-hidden border-r border-[var(--chat-border)] bg-[var(--chat-sidebar)]">
       <ChatNav onNew={onNew} onNavigate={onNavigate} onCustomize={onCustomize} />
       <ChatProjectList
         pinned={pinned}

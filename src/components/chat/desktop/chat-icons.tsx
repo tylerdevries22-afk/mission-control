@@ -94,7 +94,8 @@ export function IconFolder({ className = 'h-3.5 w-3.5 shrink-0' }: { className?:
 export function IconPin({ className = 'h-3.5 w-3.5 shrink-0', filled = false }: { className?: string; filled?: boolean }) {
   return (
     <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
-      <path d="M8 2v9M5 13h6" strokeLinecap="round" />
+      <path d="M8 14s4.5-4.2 4.5-7.2A4.5 4.5 0 0 0 8 2.3a4.5 4.5 0 0 0-4.5 4.5C3.5 9.8 8 14 8 14z" strokeLinejoin="round" />
+      {!filled && <circle cx="8" cy="6.8" r="1.2" />}
     </svg>
   )
 }

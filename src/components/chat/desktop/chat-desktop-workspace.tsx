@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { contextPercent } from '@/lib/chat-session-metrics'
 import { useMissionControl } from '@/store'
-import { projectSlugOf, sessionsForProject } from '@/lib/chat-session-identity'
+import { projectSlugOf } from '@/lib/chat-session-identity'
 import { conversationsToItems, gitLensByProject, toHomeSessions, withOptimisticUser } from '@/lib/chat-desktop-data'
 import { buildSidebarRows, type SidebarRow } from '@/lib/group-sessions'
 import { extractPlanMarkdown } from '@/lib/session-plan'
@@ -12,6 +11,10 @@ import { useChatConversations } from '../use-chat-conversations'
 import { useChatDesktopPrefs } from '../use-chat-desktop-prefs'
 import { useChatGithub } from '../use-chat-github'
 import { useDesktopSend } from '../use-desktop-send'
+import { projectFromRow, sendDesktopPrompt } from '../use-desktop-actions'
+import { useFolderOrder } from '../use-folder-order'
+import { usePermissionMode } from '../use-permission-mode'
+import { useChatUsage } from '../use-chat-usage'
 import { useLiveNow } from '../use-live-now'
 import { useSessionTranscript } from '../use-session-transcript'
 import { ChatComposer } from '../composer/chat-composer'
@@ -23,91 +26,76 @@ import { useSessionArtifact } from '../use-session-artifact'
 import { ChatMobileBar } from './chat-mobile-bar'
 import { ChatShell } from './chat-shell'
 import { ChatSidebar } from './chat-sidebar'
+import { useRailResize } from './use-rail-resize'
 
 export function ChatDesktopWorkspace() {
   const { currentUser, projects, setActiveConversation, activeConversation, conversations, setActiveProject } = useMissionControl()
   const navigate = useNavigateToPanel()
   const { agents, reload } = useChatConversations()
   const prefs = useChatDesktopPrefs(currentUser?.id)
+  const folders = useFolderOrder(currentUser?.id)
+  const permission = usePermissionMode()
+  const rail = useRailResize(currentUser?.id)
   const github = useChatGithub()
   const now = useLiveNow()
   const selected = conversations.find((conv) => conv.id === activeConversation)
   const transcript = useSessionTranscript(selected?.session)
   const sender = useDesktopSend(transcript.refresh)
+  const usage = useChatUsage(
+    selected?.session?.sessionKind || 'claude-code',
+    selected?.session?.tokens,
+    selected?.session?.model,
+  )
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [planOpen, setPlanOpen] = useState(true)
   const [prHidden, setPrHidden] = useState(false)
-  const [bypass, setBypass] = useState(false)
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [pendingUser, setPendingUser] = useState<string | null>(null)
   const pulls = github.pullRequests
   const paneMessages = withOptimisticUser(transcript.messages, pendingUser)
   const { artifact, html } = useSessionArtifact(selected?.session?.sessionKind, selected?.session?.sessionId, paneMessages)
 
+  useEffect(() => { setPrHidden(false); setPendingUser(null) }, [selected?.id])
   useEffect(() => {
-    setPrHidden(false)
-    setPendingUser(null)
-  }, [selected?.id])
-
-  useEffect(() => {
-    if (!pendingUser) return
-    if (withOptimisticUser(transcript.messages, pendingUser) === transcript.messages) setPendingUser(null)
+    if (pendingUser && withOptimisticUser(transcript.messages, pendingUser) === transcript.messages) setPendingUser(null)
   }, [transcript.messages, pendingUser])
 
   const items = useMemo(() => conversationsToItems(conversations, pulls), [conversations, pulls])
-  const rows = useMemo(() => {
-    return buildSidebarRows(
-      items,
-      projects.map((p) => ({ name: p.name, slug: p.slug })),
-      prefs.filters,
-      prefs.pins,
-      prefs.folderOrder,
-    )
-  }, [items, projects, prefs.filters, prefs.pins, prefs.folderOrder])
+  const rows = useMemo(() => buildSidebarRows(
+    items,
+    projects.map((p) => ({ name: p.name, slug: p.slug })),
+    prefs.filters,
+    prefs.pins,
+    folders.folderOrder,
+  ), [items, projects, prefs.filters, prefs.pins, folders.folderOrder])
   const sessionsByProject = useMemo(() => gitLensByProject(items, rows), [items, rows])
   const homeSessions = useMemo(() => toHomeSessions(items), [items])
   const selectedSlug = selectedKey?.slice((selectedKey.indexOf(':') + 1)) || ''
   const selectedProject = projects.find((p) => p.slug === selectedSlug || p.name === selectedSlug) || null
   const selectedLeaf = selected?.session?.workingDir ? projectSlugOf(selected.session.workingDir) : selectedSlug
   const pr = pulls.find((item) => selectedLeaf && item.repo.toLowerCase().includes(selectedLeaf))
+  const sendOpts = {
+    model: prefs.modelAlias,
+    fast: prefs.fastMode,
+    effort: prefs.effort,
+    permissionMode: permission.mode,
+  }
 
   const onSelectRow = (row: SidebarRow) => {
     setSelectedKey((prev) => (prev === row.key ? null : row.key))
-    setActiveProject(projects.find((p) => p.slug === row.key.slice(row.key.indexOf(':') + 1) || p.name === row.label) || null)
+    setActiveProject(projectFromRow(projects, row))
   }
   const onNewInGroup = (row: SidebarRow) => {
     setSelectedKey(row.key)
     setActiveConversation(null)
-    setActiveProject(projects.find((p) => p.slug === row.key.slice(row.key.indexOf(':') + 1) || p.name === row.label) || null)
-  }
-  const onNavigate = (panel: string) => {
-    if (selectedProject) setActiveProject(selectedProject)
-    navigate(panel)
-  }
-  const onSend = (text: string) => {
-    if (selected?.session) {
-      setPendingUser(text)
-      void sender.sendSession(text, selected.session, { model: prefs.modelAlias, fast: prefs.fastMode, effort: prefs.effort })
-      return
-    }
-    const latest = selectedKey ? sessionsForProject(items, selectedKey)[0] : undefined
-    const latestConv = latest && conversations.find((conv) => conv.id === latest.id)
-    if (latestConv?.session) {
-      setActiveConversation(latestConv.id)
-      setPendingUser(text)
-      void sender.sendSession(text, latestConv.session, { model: prefs.modelAlias, fast: prefs.fastMode, effort: prefs.effort })
-      return
-    }
-    const agent = agents[0]
-    if (!agent) return
-    const id = `agent_${agent.name}`
-    setActiveConversation(id)
-    void sender.sendAgent(text, id)
+    setActiveProject(projectFromRow(projects, row))
   }
 
   const plan = extractPlanMarkdown(transcript.messages)
   return (
     <ChatShell
+      sidebarWidth={rail.width}
+      resizeHandle={rail.handleProps}
       sidebar={(
         <ChatSidebar
           pinned={rows.pinned}
@@ -119,15 +107,15 @@ export function ChatDesktopWorkspace() {
           onNew={() => { setActiveConversation(null); if (selectedProject) setActiveProject(selectedProject) }}
           onNewInGroup={onNewInGroup}
           onSearch={(search) => prefs.setFilters({ ...prefs.filters, search })}
-          onNavigate={onNavigate}
+          onNavigate={(panel) => { if (selectedProject) setActiveProject(selectedProject); navigate(panel) }}
           onCustomize={() => setCustomizeOpen((open) => !open)}
           sessionsByProject={sessionsByProject}
           activeSessionId={activeConversation}
           onSelectSession={setActiveConversation}
           pins={prefs.pins}
           onTogglePin={(slug) => prefs.setPins(prefs.pins.includes(slug) ? prefs.pins.filter((pin) => pin !== slug) : [...prefs.pins, slug])}
-          folderOrder={prefs.folderOrder}
-          onReorder={prefs.setFolderOrder}
+          folderOrder={folders.folderOrder}
+          onReorder={folders.setFolderOrder}
           now={now}
         />
       )}
@@ -179,11 +167,23 @@ export function ChatDesktopWorkspace() {
             onFastMode={prefs.setFastMode}
             effort={prefs.effort}
             onEffort={prefs.setEffort}
-            usedPercent={selected?.session ? contextPercent(selected.session.tokens, selected.session.model) : null}
-            resetsAt={null}
-            bypassLabel={bypass ? 'Bypass on' : 'Bypass permissions'}
-            onBypass={() => { setBypass((value) => !value); if (!bypass) onNavigate('exec-approvals') }}
-            onSend={onSend}
+            sessionKind={selected?.session?.sessionKind || 'claude-code'}
+            permissionMode={permission.mode}
+            onPermissionMode={permission.allowed ? permission.setMode : undefined}
+            usage={usage}
+            onSend={(text) => sendDesktopPrompt({
+              text,
+              selected,
+              selectedKey,
+              items,
+              conversations,
+              agents,
+              opts: sendOpts,
+              setPendingUser,
+              setActiveConversation,
+              sendSession: sender.sendSession,
+              sendAgent: sender.sendAgent,
+            })}
           />
         </>
       )}

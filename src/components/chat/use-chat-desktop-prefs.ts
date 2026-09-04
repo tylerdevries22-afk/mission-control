@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { DEFAULT_CHAT_FILTERS, type ChatFilterState } from '@/lib/group-sessions'
-import { parseFolderOrder } from '@/lib/chat-folder-order'
 import { parsePins } from '@/lib/chat-display'
 import { isEffortLevel, type EffortLevel } from '@/lib/chat-model-groups'
 
@@ -22,11 +21,9 @@ export function useChatDesktopPrefs(userId: number | string | undefined) {
   const pinKey = `mc.chat-desktop.pins.${scope}`
   const modelKey = `mc.chat-desktop.model.${scope}`
   const effortKey = `mc.chat-desktop.effort.${scope}`
-  const orderKey = `mc.chat-desktop.order.${scope}`
 
   const [filters, setFilters] = useState<ChatFilterState>(DEFAULT_CHAT_FILTERS)
   const [pins, setPins] = useState<string[]>([])
-  const [folderOrder, setFolderOrder] = useState<string[]>([])
   const [modelAlias, setModelAlias] = useState('opus')
   const [fastMode, setFastMode] = useState(false)
   const [effort, setEffort] = useState<EffortLevel>('medium')
@@ -34,11 +31,10 @@ export function useChatDesktopPrefs(userId: number | string | undefined) {
   useEffect(() => {
     setFilters({ ...DEFAULT_CHAT_FILTERS, ...readJson<Partial<ChatFilterState>>(filterKey, {}) })
     setPins(parsePins(typeof window === 'undefined' ? null : window.localStorage.getItem(pinKey)))
-    setFolderOrder(parseFolderOrder(typeof window === 'undefined' ? null : window.localStorage.getItem(orderKey)))
     setModelAlias(readJson<string>(modelKey, 'opus') || 'opus')
     const storedEffort = readJson<string>(effortKey, 'medium')
     setEffort(isEffortLevel(storedEffort) ? storedEffort : 'medium')
-  }, [filterKey, pinKey, orderKey, modelKey, effortKey])
+  }, [filterKey, pinKey, modelKey, effortKey])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -60,18 +56,11 @@ export function useChatDesktopPrefs(userId: number | string | undefined) {
     window.localStorage.setItem(effortKey, JSON.stringify(effort))
   }, [effortKey, effort])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(orderKey, JSON.stringify(folderOrder))
-  }, [orderKey, folderOrder])
-
   return {
     filters,
     setFilters,
     pins,
     setPins,
-    folderOrder,
-    setFolderOrder,
     modelAlias,
     setModelAlias,
     fastMode,
