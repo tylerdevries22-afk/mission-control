@@ -8,8 +8,8 @@
 import { createHash } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { homedir } from 'node:os'
 import { resolveWithin } from './paths'
+import { skillTargetDir } from './skill-roots'
 import { logger } from './logger'
 import { atomicReplaceFileSync } from './atomic-file'
 
@@ -395,19 +395,7 @@ function skillNameFromSlug(slug: string): string {
 }
 
 function getTargetDir(targetRoot: string): string {
-  const home = homedir()
-  const cwd = process.cwd()
-  const openclawState = process.env.OPENCLAW_STATE_DIR || process.env.OPENCLAW_HOME || join(home, '.openclaw')
-  const rootMap: Record<string, string> = {
-    'user-agents': process.env.MC_SKILLS_USER_AGENTS_DIR || join(home, '.agents', 'skills'),
-    'user-codex': process.env.MC_SKILLS_USER_CODEX_DIR || join(home, '.codex', 'skills'),
-    'project-agents': process.env.MC_SKILLS_PROJECT_AGENTS_DIR || join(cwd, '.agents', 'skills'),
-    'project-codex': process.env.MC_SKILLS_PROJECT_CODEX_DIR || join(cwd, '.codex', 'skills'),
-    'openclaw': process.env.MC_SKILLS_OPENCLAW_DIR || join(openclawState, 'skills'),
-  }
-  const dir = rootMap[targetRoot]
-  if (!dir) throw new Error(`Invalid target root: ${targetRoot}`)
-  return dir
+  return skillTargetDir(targetRoot)
 }
 
 async function fetchClawdHubSkill(slug: string): Promise<{ content: unknown; hash?: string }> {

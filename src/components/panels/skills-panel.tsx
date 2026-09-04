@@ -78,12 +78,17 @@ function skillApiMessage(error: unknown, fallback: string): string {
 type PanelTab = 'installed' | 'registry'
 
 const SOURCE_LABELS: Record<string, string> = {
-  'user-agents': '~/.agents/skills (global)',
-  'user-codex': '~/.codex/skills (global)',
+  'user-agents': 'Fleet (shared) ~/.agents/skills',
+  'user-codex': 'Fleet (shared) ~/.codex/skills',
+  'user-claude': 'Fleet (shared) ~/.claude/skills',
+  'user-grok': 'Fleet (shared) ~/.grok/skills',
+  'user-kimi': 'Fleet (shared) ~/.kimi-code/skills',
   'project-agents': '.agents/skills (project)',
   'project-codex': '.codex/skills (project)',
   'openclaw': '~/.openclaw/skills (gateway)',
   'workspace': '~/.openclaw/workspace/skills',
+  'grok-bundled': 'Grok bundled skills',
+  'openclaw-plugin': 'OpenClaw plugin skills',
 }
 
 function getSourceLabel(source: string): string {
@@ -593,14 +598,14 @@ export function SkillsPanel() {
                     {t('showAllRoots')}
                   </button>
                 )}
-                {(skillGroups || []).filter(g => g.skills.length > 0 || ['user-agents', 'user-codex', 'openclaw', 'workspace'].includes(g.source) || g.source.startsWith('workspace-')).map((group) => (
+                {(skillGroups || []).filter(g => g.skills.length > 0 || g.source === 'user-agents').map((group) => (
                   <button
                     key={group.source}
                     onClick={() => setActiveRoot(activeRoot === group.source ? null : group.source)}
-                    className={`rounded-lg border bg-card p-3 text-left transition-colors ${
+                    className={`rounded-lg border bg-card p-3 text-left transition-colors cursor-pointer ${
                       activeRoot === group.source
                         ? 'border-primary ring-1 ring-primary/30'
-                        : group.source === 'openclaw' ? 'border-cyan-500/30 hover:border-cyan-500/50'
+                        : group.source === 'grok-bundled' || group.source === 'openclaw-plugin' ? 'border-cyan-500/30 hover:border-cyan-500/50'
                         : group.source.startsWith('workspace-') ? 'border-violet-500/30 hover:border-violet-500/50'
                         : 'border-border hover:border-border/80'
                     }`}
@@ -608,6 +613,15 @@ export function SkillsPanel() {
                     <div className="text-xs font-medium text-muted-foreground">{getSourceLabel(group.source)}</div>
                     <div className="mt-1 text-lg font-semibold text-foreground">{group.skills.length}</div>
                     <div className="mt-1 text-2xs text-muted-foreground truncate">{group.path}</div>
+                    {group.source === 'user-agents' && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {['codex', 'claude', 'grok', 'kimi', 'openclaw'].map((alias) => (
+                          <span key={alias} className="text-2xs rounded-full border border-border px-1.5 py-0.5 text-muted-foreground">
+                            {alias}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>

@@ -10,6 +10,8 @@ import { execFileSync } from 'child_process'
 import { validateBody, integrationActionSchema } from '@/lib/validation'
 import { mutationLimiter } from '@/lib/rate-limit'
 import { detectProviderSubscriptions } from '@/lib/provider-subscriptions'
+import { claudeFleetPlanByIntegrationId } from '@/lib/claude-fleet-plans'
+import { detectClaudeFleetPlans } from '@/lib/claude-fleet-plan-status'
 import { getPluginIntegrations, getPluginCategories } from '@/lib/plugins'
 import type { PluginIntegrationDef } from '@/lib/plugins'
 import { denyUnscopedResourceForStrictWorkspace } from '@/lib/workspace-isolation'
@@ -43,7 +45,23 @@ const INTEGRATION_PROBE_TTL_MS = 5000
 
 const INTEGRATIONS: IntegrationDef[] = [
   // AI Providers
-  { id: 'anthropic', name: 'Anthropic', category: 'ai', envVars: ['ANTHROPIC_API_KEY'], vaultItem: 'openclaw-anthropic-api-key', testable: true },
+  { id: 'anthropic', name: 'Anthropic API', category: 'ai', envVars: ['ANTHROPIC_API_KEY'], vaultItem: 'openclaw-anthropic-api-key', testable: true },
+  {
+    id: 'claude-max-20x',
+    name: 'Claude Max 20x',
+    category: 'ai',
+    envVars: [],
+    testable: true,
+    recommendation: 'Personal Max 20x. Concurrent dispatch needs a one-time `CLAUDE_CONFIG_DIR=~/.claude-20x claude auth login`. Heal will not create that directory or copy oauthAccount.',
+  },
+  {
+    id: 'claude-max-5x',
+    name: 'Claude Max 5x',
+    category: 'ai',
+    envVars: [],
+    testable: true,
+    recommendation: 'Stillpoint Max 5x. Concurrent dispatch needs a one-time `CLAUDE_CONFIG_DIR=~/.claude-5x claude auth login`. Heal will not create that directory or copy oauthAccount.',
+  },
   { id: 'openai', name: 'OpenAI', category: 'ai', envVars: ['OPENAI_API_KEY'], vaultItem: 'openclaw-openai-api-key', testable: true },
   { id: 'openrouter', name: 'OpenRouter', category: 'ai', envVars: ['OPENROUTER_API_KEY'], vaultItem: 'openclaw-openrouter-api-key', testable: true },
   { id: 'venice', name: 'Venice AI', category: 'ai', envVars: ['VENICE_API_KEY'], vaultItem: 'openclaw-venice-api-key', testable: true },
@@ -330,6 +348,7 @@ export async function GET(request: NextRequest) {
   const probe = await getIntegrationProbeSnapshot()
   const { opAvailable, xint, ollamaInstalled, ollamaReachable, gwsInstalled } = probe
   const providerSubscriptions = detectProviderSubscriptions()
+  const claudeFleetPlans = detectClaudeFleetPlans()
 
   // Merge plugin integrations and categories
   const pluginIntegrations = getPluginIntegrations()
@@ -387,8 +406,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Support OAuth/subscription-based auth for providers that may not expose API keys.
-    if ((def.id === 'anthropic' || def.id === 'openai') && !anySet) {
+    // OpenAI ChatGPT subscription can stand in for an API key. Claude Max plans
+    // are separate integrations so Anthropic is not collapsed to one "max".
+    if (def.id === 'openai' && !anySet) {
       const sub = providerSubscriptions.active[def.id]
       if (sub) {
         const primaryVar = def.envVars[0]
@@ -399,6 +419,19 @@ export async function GET(request: NextRequest) {
         allSet = true
         anySet = true
       }
+    }
+
+    const fleetPlan = claudeFleetPlanByIntegrationId(def.id)
+    if (fleetPlan) {
+      const live = claudeFleetPlans.find((plan) => plan.identity === fleetPlan.identity)
+      vars.CLAUDE_CONFIG_DIR = {
+        redacted: live?.isolatedHomeExists
+          ? live.isolatedHome
+          : `${live?.isolatedHome ?? `~/${fleetPlan.homeName}`} (needs login)`,
+        set: Boolean(live?.isolatedHomeExists),
+      }
+      anySet = true
+      allSet = Boolean(live?.isolatedHomeExists)
     }
 
     // Local Ollama can be available without API key-based auth.
@@ -697,11 +730,23 @@ async function handleTest(
         break
       }
 
+      case 'claude-max-20x':
+      case 'claude-max-5x': {
+        const plan = detectClaudeFleetPlans().find((item) => item.integrationId === integration.id)
+        if (plan?.isolatedHomeExists) {
+          result = { ok: true, detail: `${plan.label} isolated home ready at ${plan.isolatedHome}` }
+          break
+        }
+        result = {
+          ok: false,
+          detail: `${plan?.label ?? integration.name} needs one-time CLAUDE_CONFIG_DIR=${plan?.isolatedHome ?? ''} claude auth login`,
+        }
+        break
+      }
+
       case 'anthropic': {
         const key = getEffectiveEnvValue(envMap, 'ANTHROPIC_API_KEY')
         if (!key) {
-          const sub = providerSubscriptions.active.anthropic
-          if (sub) return NextResponse.json({ ok: true, detail: `OAuth/subscription detected: ${sub.type}` })
           return NextResponse.json({ ok: false, detail: 'API key not set' })
         }
         const res = await fetch('https://api.anthropic.com/v1/models', {

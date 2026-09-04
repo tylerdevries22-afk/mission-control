@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'fs'
+import { closeSync, openSync, readSync, readdirSync, statSync } from 'fs'
 import { basename, join } from 'path'
 import { config } from './config'
 import { logger } from './logger'
@@ -93,10 +93,21 @@ function clampTimestamp(ms: number): number {
   return ms
 }
 
+function readHead(filePath: string, maxBytes = 48_000): string {
+  const fd = openSync(filePath, 'r')
+  try {
+    const buf = Buffer.alloc(maxBytes)
+    const n = readSync(fd, buf, 0, maxBytes, 0)
+    return buf.subarray(0, n).toString('utf8')
+  } finally {
+    closeSync(fd)
+  }
+}
+
 function parseCodexSessionFile(filePath: string, fileMtimeMs: number): CodexSessionStats | null {
   let content: string
   try {
-    content = readFileSync(filePath, 'utf-8')
+    content = readHead(filePath)
   } catch {
     return null
   }
@@ -148,6 +159,11 @@ function parseCodexSessionFile(filePath: string, fileMtimeMs: number): CodexSess
       const startedAt = asString(payload.timestamp)
       if (startedAt && !firstMessageAt) firstMessageAt = startedAt
       continue
+    }
+
+    if (entryType === 'turn_context' && payload) {
+      const cwd = asString(payload.cwd)
+      if (cwd) projectPath = cwd
     }
 
     if (entryType === 'response_item' && payload) {

@@ -21,6 +21,7 @@ import {
   ModelsTab,
   CreateAgentModal
 } from './agent-detail-tabs'
+import { ConnectorsTab } from './agent-detail/connectors-tab'
 import { formatModelName, buildTaskStatParts } from '@/lib/agent-card-helpers'
 import { apiFetch, ApiError } from '@/lib/api-client'
 import { useMissionControl, type Agent } from '@/store'
@@ -656,7 +657,7 @@ function AgentDetailModalPhase3({
   onDelete: (agentId: number, removeWorkspace: boolean) => Promise<void>
 }) {
   const [agentState, setAgentState] = useState<Agent & { config?: any; working_memory?: string }>(agent as Agent & { config?: any; working_memory?: string })
-  const [activeTab, setActiveTab] = useState<'overview' | 'soul' | 'memory' | 'config' | 'tasks' | 'activity' | 'files' | 'tools' | 'channels' | 'cron' | 'models'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'soul' | 'memory' | 'config' | 'tasks' | 'activity' | 'files' | 'tools' | 'channels' | 'cron' | 'models' | 'connectors'>('overview')
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({
     role: agent.role,
@@ -677,6 +678,7 @@ function AgentDetailModalPhase3({
   const [showDeleteMenu, setShowDeleteMenu] = useState(false)
   const [saveBusy, setSaveBusy] = useState(false)
   const deleteMenuRef = useRef<HTMLDivElement>(null)
+  const { dashboardMode } = useMissionControl()
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -931,8 +933,9 @@ function AgentDetailModalPhase3({
     { id: 'memory', label: 'Memory', icon: 'M' },
     { id: 'tasks', label: 'Tasks', icon: 'T' },
     { id: 'config', label: 'Config', icon: 'C' },
+    { id: 'connectors', label: 'Connectors', icon: 'N' },
     { id: 'activity', label: 'Activity', icon: 'A' }
-  ]
+  ].filter((tab) => dashboardMode === 'full' || tab.id !== 'channels')
 
   const handleDelete = async (removeWorkspace: boolean) => {
     const scope = removeWorkspace ? 'agent and workspace' : 'agent'
@@ -964,7 +967,7 @@ function AgentDetailModalPhase3({
         <div className="px-5 pt-5 pb-0 border-b border-border">
           <div className="flex justify-between items-center gap-4 mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <AgentAvatar name={agent.name} size="md" />
+              <AgentAvatar name={agent.name} size="lg" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold text-foreground leading-tight truncate">{agentState.name}</h3>
@@ -1137,6 +1140,10 @@ function AgentDetailModalPhase3({
 
           {activeTab === 'models' && (
             <ModelsTab agent={agentState} />
+          )}
+
+          {activeTab === 'connectors' && (
+            <ConnectorsTab agent={agentState} />
           )}
 
           {activeTab === 'activity' && (

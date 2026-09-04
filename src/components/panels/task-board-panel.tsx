@@ -699,10 +699,28 @@ export function TaskBoardPanel() {
         setSpawnFormData({ task: '', model: 'sonnet', label: '', timeoutSeconds: 300 })
         setShowSpawnForm(false)
       } else {
-        updateSpawnRequest(spawnId, {
-          status: 'failed',
-          error: result.error || 'Unknown error'
-        })
+        const taskRes = await apiFetch<{ task?: { id: number } }>('/api/tasks', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: spawnFormData.task,
+            assigned_to: spawnFormData.label || undefined,
+            status: spawnFormData.label ? 'assigned' : 'inbox',
+            priority: 'medium',
+          }),
+        }).catch(() => null)
+        if (taskRes?.task?.id) {
+          updateSpawnRequest(spawnId, {
+            status: 'running',
+            result: `Queued as task ${taskRes.task.id}`,
+          })
+          setSpawnFormData({ task: '', model: 'sonnet', label: '', timeoutSeconds: 300 })
+          setShowSpawnForm(false)
+        } else {
+          updateSpawnRequest(spawnId, {
+            status: 'failed',
+            error: result.error || 'Unknown error'
+          })
+        }
       }
     } catch (error) {
       log.error('Spawn error:', error)

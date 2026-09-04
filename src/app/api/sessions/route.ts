@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAllGatewaySessions } from '@/lib/sessions'
 import { syncClaudeSessions } from '@/lib/claude-sessions'
-import { scanCodexSessions } from '@/lib/codex-sessions'
-import { scanHermesSessions } from '@/lib/hermes-sessions'
-import { scanOpenCodeSessions } from '@/lib/opencode-sessions'
-import { getDatabase, db_helpers } from '@/lib/db'
+import { db_helpers } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { callOpenClawGateway } from '@/lib/openclaw-gateway'
 import { mutationLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 import { denyUnscopedResourceForStrictWorkspace } from '@/lib/workspace-isolation'
-
-// Upstream default 90 minutes was too lax (every recently-touched jsonl
-// stayed "active"); 2 minutes was too tight. 15 minutes matches the
-// scanner's threshold so derived/scanned active state stay coherent.
-const LOCAL_SESSION_ACTIVE_WINDOW_MS = 15 * 60 * 1000
+import { listNormalizedLocalSessions } from '@/lib/local-session-list'
+import { matchesSessionFilters } from '@/lib/session-record'
+import { dedupeAndSortSessions, mapGatewaySessions } from '@/lib/session-merge'
 
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
@@ -23,21 +18,17 @@ export async function GET(request: NextRequest) {
   if (isolationDenied) return isolationDenied
 
   try {
-    const gatewaySessions = getAllGatewaySessions()
-    const mappedGatewaySessions = mapGatewaySessions(gatewaySessions)
-
-    // Always include local sessions alongside gateway sessions
-    await syncClaudeSessions()
-    const claudeSessions = getLocalClaudeSessions()
-    const codexSessions = getLocalCodexSessions()
-    const hermesSessions = getLocalHermesSessions()
-    const opencodeSessions = getLocalOpenCodeSessions()
-    const localMerged = mergeLocalSessions(claudeSessions, codexSessions, hermesSessions, opencodeSessions)
-
-    if (mappedGatewaySessions.length === 0 && localMerged.length === 0) {
-      return NextResponse.json({ sessions: [] })
+    const { searchParams } = new URL(request.url)
+    const filters = {
+      agent: searchParams.get('agent') || undefined,
+      project: searchParams.get('project') || undefined,
+      active: searchParams.get('active') || undefined,
+      environment: searchParams.get('environment') || undefined,
     }
-
+    await syncClaudeSessions()
+    const localMerged = listNormalizedLocalSessions(filters)
+    const mappedGatewaySessions = mapGatewaySessions(getAllGatewaySessions())
+      .filter((session) => matchesSessionFilters(session, filters))
     const merged = dedupeAndSortSessions([...mappedGatewaySessions, ...localMerged])
     return NextResponse.json({ sessions: merged })
   } catch (error) {
@@ -170,242 +161,6 @@ export async function DELETE(request: NextRequest) {
     logger.error({ err: error }, 'Session DELETE error')
     return NextResponse.json({ error: error.message || 'Session deletion failed' }, { status: 500 })
   }
-}
-
-function mapGatewaySessions(gatewaySessions: ReturnType<typeof getAllGatewaySessions>) {
-  // Deduplicate by sessionId — OpenClaw tracks cron runs under the same
-  // session ID as the parent session, causing duplicate React keys (#80).
-  // Keep the most recently updated entry when duplicates exist.
-  const sessionMap = new Map<string, (typeof gatewaySessions)[0]>()
-  for (const s of gatewaySessions) {
-    const id = s.sessionId || `${s.agent}:${s.key}`
-    const existing = sessionMap.get(id)
-    if (!existing || s.updatedAt > existing.updatedAt) {
-      sessionMap.set(id, s)
-    }
-  }
-
-  return Array.from(sessionMap.values()).map((s) => {
-    const totalTokens = s.totalTokens || 0
-    const context = s.contextTokens || 35000
-    const pct = context > 0 ? Math.round((totalTokens / context) * 100) : 0
-    return {
-      id: s.sessionId || `${s.agent}:${s.key}`,
-      key: s.key,
-      agent: s.agent,
-      kind: s.chatType || 'unknown',
-      age: formatAge(s.updatedAt),
-      model: s.model,
-      tokens: `${formatTokens(totalTokens)}/${formatTokens(context)} (${pct}%)`,
-      channel: s.channel,
-      flags: [],
-      active: s.active,
-      startTime: s.updatedAt,
-      lastActivity: s.updatedAt,
-      source: 'gateway' as const,
-    }
-  })
-}
-
-/** Read Claude Code sessions from the local SQLite database */
-function getLocalClaudeSessions() {
-  try {
-    const db = getDatabase()
-    const rows = db.prepare(
-      'SELECT * FROM claude_sessions ORDER BY last_message_at DESC LIMIT 50'
-    ).all() as Array<Record<string, any>>
-
-    return rows.map((s) => {
-      const lastMsg = s.last_message_at ? new Date(s.last_message_at).getTime() : 0
-      // Trust scanner state first, but fall back to derived recency so UI doesn't
-      // show stale "xh ago" when the active flag lags behind disk updates.
-      const derivedActive = lastMsg > 0 && (Date.now() - lastMsg) < LOCAL_SESSION_ACTIVE_WINDOW_MS
-      const isActive = s.is_active === 1 || derivedActive
-      const effectiveLastActivity = isActive ? Date.now() : lastMsg
-      return {
-        id: s.session_id,
-        key: s.project_slug || s.session_id,
-        agent: s.project_slug || 'local',
-        kind: 'claude-code',
-        age: isActive ? 'now' : formatAge(lastMsg),
-        model: s.model || 'unknown',
-        tokens: `${formatTokens(s.input_tokens || 0)}/${formatTokens(s.output_tokens || 0)}`,
-        channel: 'local',
-        flags: s.git_branch ? [s.git_branch] : [],
-        active: isActive,
-        startTime: s.first_message_at ? new Date(s.first_message_at).getTime() : 0,
-        lastActivity: effectiveLastActivity,
-        source: 'local' as const,
-        userMessages: s.user_messages || 0,
-        assistantMessages: s.assistant_messages || 0,
-        toolUses: s.tool_uses || 0,
-        estimatedCost: s.estimated_cost || 0,
-        lastUserPrompt: s.last_user_prompt || null,
-        workingDir: s.project_path || null,
-      }
-    })
-  } catch (err) {
-    logger.warn({ err }, 'Failed to read local Claude sessions')
-    return []
-  }
-}
-
-function getLocalCodexSessions() {
-  try {
-    const rows = scanCodexSessions(100)
-
-    return rows.map((s) => {
-      const total = s.totalTokens || (s.inputTokens + s.outputTokens)
-      const lastMsg = s.lastMessageAt ? new Date(s.lastMessageAt).getTime() : 0
-      const firstMsg = s.firstMessageAt ? new Date(s.firstMessageAt).getTime() : 0
-      const effectiveLastActivity = s.isActive ? Date.now() : lastMsg
-      return {
-        id: s.sessionId,
-        key: s.projectSlug || s.sessionId,
-        agent: s.projectSlug || 'codex-local',
-        kind: 'codex-cli',
-        age: s.isActive ? 'now' : formatAge(lastMsg),
-        model: s.model || 'codex',
-        tokens: `${formatTokens(s.inputTokens || 0)}/${formatTokens(s.outputTokens || 0)}`,
-        channel: 'local',
-        flags: [],
-        active: s.isActive,
-        startTime: firstMsg,
-        lastActivity: effectiveLastActivity,
-        source: 'local' as const,
-        userMessages: s.userMessages || 0,
-        assistantMessages: s.assistantMessages || 0,
-        toolUses: 0,
-        estimatedCost: 0,
-        lastUserPrompt: null,
-        totalTokens: total,
-        workingDir: s.projectPath || null,
-      }
-    })
-  } catch (err) {
-    logger.warn({ err }, 'Failed to read local Codex sessions')
-    return []
-  }
-}
-
-function getLocalHermesSessions() {
-  try {
-    const rows = scanHermesSessions(100)
-
-    return rows.map((s) => {
-      const total = s.inputTokens + s.outputTokens
-      const lastMsg = s.lastMessageAt ? new Date(s.lastMessageAt).getTime() : 0
-      const firstMsg = s.firstMessageAt ? new Date(s.firstMessageAt).getTime() : 0
-      const effectiveLastActivity = s.isActive ? Date.now() : lastMsg
-      return {
-        id: s.sessionId,
-        key: s.title || s.sessionId,
-        agent: 'hermes',
-        kind: 'hermes',
-        age: s.isActive ? 'now' : formatAge(lastMsg),
-        model: s.model || 'hermes',
-        tokens: `${formatTokens(s.inputTokens)}/${formatTokens(s.outputTokens)}`,
-        channel: s.source || 'cli',
-        flags: s.source && s.source !== 'cli' ? [s.source] : [],
-        active: s.isActive,
-        startTime: firstMsg,
-        lastActivity: effectiveLastActivity,
-        source: 'local' as const,
-        userMessages: s.messageCount,
-        assistantMessages: 0,
-        toolUses: s.toolCallCount,
-        estimatedCost: 0,
-        lastUserPrompt: s.title || null,
-        totalTokens: total,
-        workingDir: null,
-      }
-    })
-  } catch (err) {
-    logger.warn({ err }, 'Failed to read local Hermes sessions')
-    return []
-  }
-}
-
-function getLocalOpenCodeSessions() {
-  try {
-    const rows = scanOpenCodeSessions(100)
-
-    return rows.map((s) => {
-      const effectiveLastActivity = s.isActive && s.lastMessageAt ? Date.now() : (s.lastMessageAt ? new Date(s.lastMessageAt).getTime() : 0)
-      return {
-        id: s.sessionId,
-        key: s.projectSlug || s.sessionId,
-        agent: s.projectSlug || 'opencode',
-        kind: 'opencode',
-        age: s.isActive && s.lastMessageAt ? 'now' : formatAge(s.lastMessageAt ? new Date(s.lastMessageAt).getTime() : 0),
-        model: s.model || s.version || 'opencode',
-        tokens: `${formatTokens(s.inputTokens)}/${formatTokens(s.outputTokens)}`,
-        channel: 'local',
-        flags: s.provider ? [s.provider] : [],
-        active: s.isActive,
-        startTime: s.firstMessageAt ? new Date(s.firstMessageAt).getTime() : 0,
-        lastActivity: effectiveLastActivity,
-        source: 'local' as const,
-        userMessages: s.userMessages,
-        assistantMessages: s.assistantMessages,
-        toolUses: 0,
-        estimatedCost: 0,
-        lastUserPrompt: s.title || null,
-        totalTokens: s.totalTokens,
-        workingDir: s.projectPath || null,
-      }
-    })
-  } catch (err) {
-    logger.warn({ err }, 'Failed to read local OpenCode sessions')
-    return []
-  }
-}
-
-function mergeLocalSessions(
-  claudeSessions: Array<Record<string, any>>,
-  codexSessions: Array<Record<string, any>>,
-  hermesSessions: Array<Record<string, any>> = [],
-  opencodeSessions: Array<Record<string, any>> = [],
-) {
-  const merged = [...claudeSessions, ...codexSessions, ...hermesSessions, ...opencodeSessions]
-  return dedupeAndSortSessions(merged)
-}
-
-function dedupeAndSortSessions(merged: Array<Record<string, any>>) {
-  const deduped = new Map<string, Record<string, any>>()
-
-  for (const session of merged) {
-    const id = String(session?.id || '')
-    const source = String(session?.source || '')
-    const key = `${source}:${id}`
-    if (!id) continue
-    const existing = deduped.get(key)
-    const currentActivity = Number(session?.lastActivity || 0)
-    const existingActivity = Number(existing?.lastActivity || 0)
-    if (!existing || currentActivity > existingActivity) deduped.set(key, session)
-  }
-
-  return Array.from(deduped.values())
-    .sort((a, b) => Number(b?.lastActivity || 0) - Number(a?.lastActivity || 0))
-    .slice(0, 100)
-}
-
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}m`
-  if (n >= 1000) return `${Math.round(n / 1000)}k`
-  return String(n)
-}
-
-function formatAge(timestamp: number): string {
-  if (!timestamp) return '-'
-  const diff = Date.now() - timestamp
-  if (diff <= 0) return 'now'
-  const mins = Math.floor(diff / 60000)
-  const hours = Math.floor(mins / 60)
-  const days = Math.floor(hours / 24)
-  if (days > 0) return `${days}d`
-  if (hours > 0) return `${hours}h`
-  return `${mins}m`
 }
 
 export const dynamic = 'force-dynamic'

@@ -78,7 +78,7 @@ function getContextualActions(data: DashboardData): Array<{
     actions.push({
       label: 'Create First Agent',
       desc: 'Set up your agent fleet',
-      tab: 'spawn',
+      tab: 'agents',
       icon: <SpawnActionIcon />,
       priority: 80,
     })

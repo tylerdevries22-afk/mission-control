@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 
-type SessionKind = 'claude-code' | 'codex-cli' | 'hermes' | 'opencode' | 'gateway'
+type SessionKind = 'claude-code' | 'codex-cli' | 'hermes' | 'opencode' | 'grok' | 'kimi' | 'gateway'
 
 const SESSION_KIND_META: Record<SessionKind, {
   label: string
@@ -36,6 +36,20 @@ const SESSION_KIND_META: Record<SessionKind, {
     label: 'OpenCode',
     shortLabel: 'OC',
     pillClassName: 'bg-fuchsia-500/15 text-fuchsia-300/80',
+  },
+  grok: {
+    label: 'Grok',
+    shortLabel: 'GX',
+    pillClassName: 'bg-orange-500/15 text-orange-300/80',
+    imageSrc: '/brand/grok-logo.svg',
+    imageAlt: 'Grok logo',
+  },
+  kimi: {
+    label: 'Kimi',
+    shortLabel: 'KM',
+    pillClassName: 'bg-violet-500/15 text-violet-300/80',
+    imageSrc: '/brand/kimi-logo.svg',
+    imageAlt: 'Kimi logo',
   },
   gateway: {
     label: 'Gateway',

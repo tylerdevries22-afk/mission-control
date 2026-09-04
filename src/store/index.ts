@@ -243,7 +243,7 @@ export interface Conversation {
     prefKey?: string
     sessionId: string
     sessionKey?: string
-    sessionKind: 'claude-code' | 'codex-cli' | 'hermes' | 'opencode' | 'gateway'
+    sessionKind: 'claude-code' | 'codex-cli' | 'hermes' | 'opencode' | 'grok' | 'kimi' | 'gateway'
     agent?: string
     displayName?: string
     colorTag?: string
@@ -253,6 +253,9 @@ export interface Conversation {
     lastUserPrompt?: string | null
     active?: boolean
     age?: string
+    project?: string
+    projectSlug?: string
+    environment?: string
   }
   participants: string[]
   lastMessage?: ChatMessage

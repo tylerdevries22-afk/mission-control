@@ -87,7 +87,7 @@ export function MetricCardsWidget({ data }: { data: DashboardData }) {
         <MetricCard
           label="Cost"
           value={isClaudeLoading ? '...' : (subscriptionLabel ? (subscriptionPrice ? `$${subscriptionPrice}/mo` : 'Included') : `$${(claudeStats?.total_estimated_cost ?? 0).toFixed(2)}`)}
-          subtitle={subscriptionLabel ? `${subscriptionLabel} plan` : 'estimated'}
+          subtitle={subscriptionLabel ? `${subscriptionLabel} plans` : 'estimated'}
           icon={<CostIcon />}
           color={errorCount > 0 ? 'red' : 'green'}
         />

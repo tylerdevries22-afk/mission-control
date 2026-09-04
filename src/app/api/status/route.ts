@@ -10,7 +10,8 @@ import { getAllGatewaySessions, getAgentLiveStatuses } from '@/lib/sessions'
 import { requireRole } from '@/lib/auth'
 import { MODEL_CATALOG } from '@/lib/models'
 import { logger } from '@/lib/logger'
-import { detectProviderSubscriptions, getPrimarySubscription } from '@/lib/provider-subscriptions'
+import { detectProviderSubscriptions } from '@/lib/provider-subscriptions'
+import { detectClaudeFleetPlans } from '@/lib/claude-fleet-plan-status'
 import { APP_VERSION } from '@/lib/version'
 import { isHermesInstalled, scanHermesSessions } from '@/lib/hermes-sessions'
 import { registerMcAsDashboard } from '@/lib/gateway-runtime'
@@ -266,7 +267,7 @@ async function getSystemStatus(workspaceId: number, includeGlobalRuntime: boolea
   try {
     // System uptime (cross-platform)
     if (process.platform === 'darwin') {
-      const { stdout } = await runCommand('sysctl', ['-n', 'kern.boottime'], {
+      const { stdout } = await runCommand('/usr/sbin/sysctl', ['-n', 'kern.boottime'], {
         timeoutMs: 3000
       })
       // Output format: { sec = 1234567890, usec = 0 } ...
@@ -346,6 +347,19 @@ async function getSystemStatus(workspaceId: number, includeGlobalRuntime: boolea
       status.sessions = {
         total: gatewaySessions.length,
         active: gatewaySessions.filter((s) => s.active).length,
+      }
+      if (status.sessions.total === 0) {
+        try {
+          const db = getDatabase()
+          const row = db.prepare(
+            'SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active FROM claude_sessions',
+          ).get() as { total: number; active: number | null } | undefined
+          if (row) {
+            status.sessions = { total: row.total || 0, active: row.active || 0 }
+          }
+        } catch {
+          // claude_sessions may not exist
+        }
       }
 
       // Sync agent statuses in DB from live session data
@@ -658,8 +672,13 @@ async function getCapabilities(request?: NextRequest, includeGlobalRuntime = tru
     }
   }
 
-  const subscriptions = detectProviderSubscriptions().active
-  const primary = getPrimarySubscription()
+  const detectedSubscriptions = detectProviderSubscriptions(false, false).active ?? {}
+  const subscriptions = detectedSubscriptions
+  const claudeFleetPlans = detectClaudeFleetPlans()
+  const primary = detectedSubscriptions.anthropic
+    || detectedSubscriptions.openai
+    || Object.values(detectedSubscriptions)[0]
+    || null
   const subscription = primary ? {
     type: primary.type,
     provider: primary.provider,
@@ -722,13 +741,13 @@ async function getCapabilities(request?: NextRequest, includeGlobalRuntime = tru
 
   const isDocker = existsSync('/.dockerenv')
 
-  return { gateway, openclawHome, claudeHome, claudeSessions, hermesInstalled, hermesSessions, subscription, subscriptions, processUser, interfaceMode, dashboardRegistration, isDocker }
+  return { gateway, openclawHome, claudeHome, claudeSessions, hermesInstalled, hermesSessions, subscription, subscriptions, claudeFleetPlans, processUser, interfaceMode, dashboardRegistration, isDocker }
 }
 
 function isPortOpen(host: string, port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = new net.Socket()
-    const timeoutMs = 1500
+    const timeoutMs = 200
 
     const cleanup = () => {
       socket.removeAllListeners()

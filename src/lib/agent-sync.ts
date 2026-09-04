@@ -14,6 +14,13 @@ import { resolveWithin } from './paths'
 import { logger } from './logger'
 import { parseJsonRelaxed } from './json-relaxed'
 import { resolveSharedRuntimeWorkspaceId } from './workspace-isolation'
+import { FLEET_AGENT_NAMES } from './fleet-agents'
+import {
+  findOpenClawAgent,
+  listOpenClawAgents,
+  removeOpenClawAgent,
+  upsertOpenClawAgent,
+} from './openclaw-agents'
 
 interface OpenClawAgent {
   id: string
@@ -198,7 +205,7 @@ async function readOpenClawAgents(): Promise<OpenClawAgent[]> {
   try {
     const raw = await readFile(configPath, 'utf-8')
     const parsed = parseJsonRelaxed<any>(raw)
-    return parsed?.agents?.list || []
+    return listOpenClawAgents(parsed, config.openclawStateDir)
   } catch (err: any) {
     if (err?.code === 'ENOENT') return []
     throw err
@@ -303,6 +310,10 @@ export async function syncAgentsFromConfig(actor: string = 'system', requestedWo
     }
   })()
 
+  db.prepare(
+    `UPDATE agents SET hidden = CASE WHEN name IN (${FLEET_AGENT_NAMES.map(() => '?').join(',')}) THEN 0 ELSE 1 END WHERE workspace_id = ?`,
+  ).run(...FLEET_AGENT_NAMES, workspaceId)
+
   const synced = agents.length
 
   // Log audit event
@@ -382,20 +393,13 @@ export async function writeAgentToConfig(agentConfig: any): Promise<void> {
   const parsed = parseJsonRelaxed<any>(raw)
 
   if (!parsed.agents) parsed.agents = {}
-  if (!parsed.agents.list) parsed.agents.list = []
 
   const normalizedAgentConfig = normalizeAgentConfigForOpenClaw(agentConfig)
-
-  // Find existing by id
-  const idx = parsed.agents.list.findIndex((a: any) => a.id === normalizedAgentConfig.id)
-  if (idx >= 0) {
-    // Deep merge: preserve fields not in update
-    parsed.agents.list[idx] = normalizeAgentConfigForOpenClaw(
-      deepMerge(parsed.agents.list[idx], normalizedAgentConfig),
-    )
-  } else {
-    parsed.agents.list.push(normalizedAgentConfig)
-  }
+  const existing = findOpenClawAgent(parsed, normalizedAgentConfig.id)
+  const merged = existing
+    ? normalizeAgentConfigForOpenClaw(deepMerge(existing, normalizedAgentConfig))
+    : normalizedAgentConfig
+  upsertOpenClawAgent(parsed, merged)
 
   await writeFile(configPath, JSON.stringify(parsed, null, 2) + '\n')
 }
@@ -416,24 +420,9 @@ export async function removeAgentFromConfig(match: {
   const { readFile, writeFile } = require('fs/promises')
   const raw = await readFile(configPath, 'utf-8')
   const parsed = parseJsonRelaxed<any>(raw)
-  const existingList = Array.isArray(parsed?.agents?.list) ? parsed.agents.list : []
-
-  const nextList = existingList.filter((agent: any) => {
-    const agentId = String(agent?.id || '').trim()
-    const agentName = String(agent?.name || '').trim()
-    const identityName = String(agent?.identity?.name || '').trim()
-
-    if (id && agentId === id) return false
-    if (name && (agentName === name || identityName === name)) return false
-    return true
-  })
-
-  if (nextList.length === existingList.length) {
-    return { removed: false }
-  }
-
   if (!parsed.agents) parsed.agents = {}
-  parsed.agents.list = nextList
+  const removed = removeOpenClawAgent(parsed, { id, name })
+  if (!removed) return { removed: false }
   await writeFile(configPath, JSON.stringify(parsed, null, 2) + '\n')
   return { removed: true }
 }

@@ -1,17 +1,16 @@
 'use client'
 
+import { brandFromAgent, brandLogo } from '@/lib/agent-brand'
+
 interface AgentAvatarProps {
   name?: string | null
-  size?: 'xs' | 'sm' | 'md'
+  runtimeType?: string | null
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
 }
 
 function getInitials(name: string): string {
-  const parts = (name ?? '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
@@ -38,22 +37,36 @@ const sizeClasses: Record<NonNullable<AgentAvatarProps['size']>, string> = {
   xs: 'w-5 h-5 text-[10px]',
   sm: 'w-6 h-6 text-[10px]',
   md: 'w-8 h-8 text-xs',
+  lg: 'w-10 h-10 text-sm',
 }
 
-export function AgentAvatar({ name, size = 'sm', className = '' }: AgentAvatarProps) {
+export function AgentAvatar({
+  name,
+  runtimeType,
+  size = 'sm',
+  className = '',
+}: AgentAvatarProps) {
   const safeName = name ?? ''
-  const initials = getInitials(safeName)
-  const colors = getAvatarColors(safeName)
+  const logo = brandLogo(brandFromAgent(safeName, runtimeType))
+  const box = `rounded-full flex items-center justify-center font-semibold shrink-0 overflow-hidden border border-border/50 ${sizeClasses[size]} ${className}`
+
+  if (logo) {
+    return (
+      <div className={`${box} bg-surface-2`} title={safeName} aria-label={safeName || logo.alt}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logo.src} alt={logo.alt} className="w-full h-full object-cover" />
+      </div>
+    )
+  }
 
   return (
     <div
-      className={`rounded-full flex items-center justify-center font-semibold shrink-0 ${sizeClasses[size]} ${className}`}
-      style={colors}
+      className={box}
+      style={getAvatarColors(safeName)}
       title={safeName}
       aria-label={safeName || 'Agent'}
     >
-      {initials}
+      {getInitials(safeName)}
     </div>
   )
 }
-

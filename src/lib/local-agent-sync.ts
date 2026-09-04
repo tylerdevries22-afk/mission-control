@@ -155,7 +155,9 @@ function scanLocalAgents(): DiskAgent[] {
       }
 
       // --- Flat .md agent files (Claude Code format) ---
+      // ~/.agents/*.md are fleet docs (openclaw-fleet.md, FLEET.md), not agents.
       if (stat.isFile() && entry.endsWith('.md') && entry !== 'CLAUDE.md' && entry !== 'AGENTS.md') {
+        if (root === join(homedir(), '.agents')) continue
         try {
           const content = readRegularFile(fullPath)
           if (content === null) continue

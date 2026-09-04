@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { listSkillRoots } from '@/lib/skill-roots'
+import { listExtraSkillRoots, listSkillRoots, skillTargetDir, SKILL_INSTALL_TARGETS } from '@/lib/skill-roots'
 
 describe('listSkillRoots', () => {
   const originalHome = process.env.HOME
@@ -31,5 +31,19 @@ describe('listSkillRoots', () => {
     const sources = roots.map((root) => root.source)
     expect(sources).toContain('user-agents')
     expect(sources).not.toContain('user-codex')
+  })
+
+  it('resolves workspace and grok/kimi install targets', () => {
+    expect(SKILL_INSTALL_TARGETS).toContain('workspace')
+    expect(SKILL_INSTALL_TARGETS).toContain('user-grok')
+    expect(SKILL_INSTALL_TARGETS).toContain('user-kimi')
+    expect(skillTargetDir('workspace')).toContain('.openclaw')
+    expect(skillTargetDir('user-grok')).toContain('.grok')
+    expect(skillTargetDir('user-kimi')).toContain('.kimi-code')
+  })
+
+  it('lists bundled plugin skill roots separately from the canonical tree', () => {
+    const extras = listExtraSkillRoots().map((root) => root.source)
+    expect(extras.every((source) => source !== 'user-agents')).toBe(true)
   })
 })

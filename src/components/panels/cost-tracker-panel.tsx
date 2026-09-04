@@ -7,6 +7,8 @@ import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
 import { apiFetch } from '@/lib/api-client'
+import { CLAUDE_FLEET_PLANS, type ClaudeFleetPlanStatus } from '@/lib/claude-fleet-plans'
+import { CostFleetPlans } from '@/components/panels/cost-fleet-plans'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
@@ -108,6 +110,15 @@ export function CostTrackerPanel() {
   const [sessionCosts, setSessionCosts] = useState<SessionCostEntry[]>([])
   const [sessionSort, setSessionSort] = useState<'cost' | 'tokens' | 'requests' | 'recent'>('cost')
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null)
+  const [fleetPlans, setFleetPlans] = useState<ClaudeFleetPlanStatus[]>(() =>
+    CLAUDE_FLEET_PLANS.map((plan) => ({
+      ...plan,
+      provider: 'anthropic',
+      isolatedHome: `~/${plan.homeName}`,
+      isolatedHomeExists: false,
+      authStatus: 'needs_login',
+    })),
+  )
 
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -118,16 +129,28 @@ export function CostTrackerPanel() {
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [statsJson, trendJson, byAgentJson, taskJson] = await Promise.all([
+      const [statsJson, trendJson, byAgentJson, taskJson, capabilities] = await Promise.all([
         apiFetch<UsageStats>(`/api/tokens?action=stats&timeframe=${timeframe}`),
         apiFetch<TrendData>(`/api/tokens?action=trends&timeframe=${timeframe}`),
         apiFetch<ByAgentResponse>(`/api/tokens/by-agent?days=${timeframeToDays(timeframe)}`),
         apiFetch<TaskCostsResponse>(`/api/tokens?action=task-costs&timeframe=${timeframe}`),
+        apiFetch<{ claudeFleetPlans?: ClaudeFleetPlanStatus[] }>('/api/status?action=capabilities').catch(() => null),
       ])
       setUsageStats(statsJson)
       setTrendData(trendJson)
       setByAgentData(byAgentJson)
       setTaskData(taskJson)
+      if (Array.isArray(capabilities?.claudeFleetPlans) && capabilities.claudeFleetPlans.length > 0) {
+        setFleetPlans(capabilities.claudeFleetPlans)
+      } else {
+        setFleetPlans(CLAUDE_FLEET_PLANS.map((plan) => ({
+          ...plan,
+          provider: 'anthropic',
+          isolatedHome: `~/${plan.homeName}`,
+          isolatedHomeExists: false,
+          authStatus: 'needs_login',
+        })))
+      }
     } catch (err) {
       log.error('Failed to load cost data:', err)
     } finally {
@@ -232,6 +255,8 @@ export function CostTrackerPanel() {
           </div>
         </div>
       </div>
+
+      <CostFleetPlans plans={fleetPlans} />
 
       {isLoading && !usageStats ? (
         <Loader variant="panel" label={t('loadingCostData')} />
