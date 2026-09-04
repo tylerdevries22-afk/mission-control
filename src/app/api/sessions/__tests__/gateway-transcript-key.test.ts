@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractAgentName } from '../transcript/gateway/route'
+import { extractAgentName } from '@/lib/gateway-session-key'
 
 describe('extractAgentName', () => {
   it('accepts agent keys and rejects traversal', () => {
