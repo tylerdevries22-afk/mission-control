@@ -175,6 +175,7 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true)
+    const failSafe = window.setTimeout(() => markStep('auth'), 3000)
 
     if (shouldRedirectDashboardToHttps({
       protocol: window.location.protocol,
@@ -423,6 +424,8 @@ export default function Home() {
           if (skillsData?.skills) setSkillsData(skillsData.skills as Parameters<typeof setSkillsData>[0], (skillsData.groups || []) as Parameters<typeof setSkillsData>[1], (skillsData.total || 0) as number)
         }),
     ]).catch(() => { /* panels will lazy-load as fallback */ })
+
+    return () => window.clearTimeout(failSafe)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- boot once on mount, not on every pathname change
   }, [connect, router, setCurrentUser, setDashboardMode, setGatewayAvailable, setLocalSessionsAvailable, setCapabilitiesChecked, setSubscription, setUpdateAvailable, setShowOnboarding, setAgents, setSessions, setProjects, setInterfaceMode, setMemoryGraphAgents, setSkillsData])

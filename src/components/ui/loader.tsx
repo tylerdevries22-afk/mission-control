@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { APP_VERSION } from '@/lib/version'
@@ -116,12 +115,11 @@ function PageLoader({ steps }: { steps?: InitStep[] }) {
               {LOADER_AGENTS.map((agent) => (
                 <div key={agent.key} className={agent.wrapperClass}>
                   <div className="relative">
-                    <Image
+                    <img
                       src={agent.src}
                       alt={agent.name}
                       width={36}
                       height={36}
-                      priority
                       className="w-9 h-9 rounded-lg border border-border/60 bg-card/90 shadow-[0_0_24px_rgba(14,165,233,0.12)]"
                     />
                     <span className={`${agent.labelClass} rounded-full border border-border/50 bg-background/85 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground shadow-xs`}>
@@ -137,13 +135,11 @@ function PageLoader({ steps }: { steps?: InitStep[] }) {
           {/* Phase 2: MC mark emerges (fades in at 2.0s) */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 animate-mc-fade-in">
             <div className="animate-float" style={{ animationDelay: '2.7s' }}>
-              <Image
+              <img
                 src="/brand/mc-logo-128.png"
                 alt="Mission Control"
                 width={56}
                 height={56}
-                priority
-                fetchPriority="high"
                 className="w-14 h-14"
               />
             </div>

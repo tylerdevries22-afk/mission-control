@@ -90,6 +90,7 @@ export async function apiFetch<T = unknown>(
         ...headers,
       },
       ...rest,
+      signal: rest.signal ?? AbortSignal.timeout(8_000),
     })
   } catch (err) {
     throw new ApiError(
