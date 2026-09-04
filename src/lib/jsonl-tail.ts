@@ -1,4 +1,4 @@
-import { existsSync, openSync, readSync, closeSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, openSync, readSync, closeSync, readdirSync, statSync, type Dirent } from 'node:fs'
 import { join } from 'node:path'
 
 export const DEFAULT_TAIL_BYTES = 768 * 1024
@@ -22,7 +22,7 @@ export function findNamedJsonl(root: string, sessionId: string): string | null {
     const dir = stack.pop()
     if (!dir) continue
     visited += 1
-    let entries: ReturnType<typeof readdirSync>
+    let entries: Dirent[]
     try {
       entries = readdirSync(dir, { withFileTypes: true })
     } catch {
