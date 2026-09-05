@@ -5,6 +5,7 @@ import { scanHermesSessions } from '@/lib/hermes-sessions'
 import { scanOpenCodeSessions } from '@/lib/opencode-sessions'
 import { activityFields, formatTokens } from '@/lib/session-list-format'
 import { ttlGet } from '@/lib/session-ttl-cache'
+import { CLI_SESSION_SCAN_LIMIT, isForeignPrefixedSessionId } from '@/lib/cli-session-kinds'
 
 const SCAN_TTL_MS = 2500
 const LOCAL_SESSION_ACTIVE_WINDOW_MS = 15 * 60 * 1000
@@ -36,15 +37,23 @@ export type SessionListItem = {
 export function getLocalClaudeSessions(): SessionListItem[] {
   try {
     const rows = getDatabase().prepare(
-      'SELECT * FROM claude_sessions ORDER BY last_message_at DESC LIMIT 50',
+      `SELECT * FROM claude_sessions
+       WHERE session_id NOT LIKE 'grok:%'
+         AND session_id NOT LIKE 'kimi:%'
+         AND session_id NOT LIKE 'codex:%'
+         AND session_id NOT LIKE 'hermes:%'
+         AND session_id NOT LIKE 'opencode:%'
+       ORDER BY last_message_at DESC LIMIT 2000`,
     ).all() as Array<Record<string, unknown>>
-    return rows.map((s) => {
+    return rows.flatMap((s) => {
+      const sessionId = String(s.session_id || '')
+      if (isForeignPrefixedSessionId(sessionId)) return []
       const lastMsg = s.last_message_at ? new Date(String(s.last_message_at)).getTime() : 0
       const derivedActive = lastMsg > 0 && (Date.now() - lastMsg) < LOCAL_SESSION_ACTIVE_WINDOW_MS
       const isActive = s.is_active === 1 || derivedActive
       const title = typeof s.custom_title === 'string' && s.custom_title ? s.custom_title : null
-      return {
-        id: String(s.session_id || ''),
+      return [{
+        id: sessionId,
         key: String(s.project_slug || s.session_id || ''),
         agent: String(s.project_slug || 'local'),
         kind: 'claude-code',
@@ -62,7 +71,7 @@ export function getLocalClaudeSessions(): SessionListItem[] {
         title,
         workingDir: typeof s.project_path === 'string' ? s.project_path : null,
         ...activityFields(isActive, lastMsg),
-      }
+      }]
     })
   } catch (err) {
     logger.warn({ err }, 'Failed to read local Claude sessions')
@@ -72,7 +81,7 @@ export function getLocalClaudeSessions(): SessionListItem[] {
 
 export function getLocalCodexSessions(): SessionListItem[] {
   try {
-    return ttlGet('codex-sessions', SCAN_TTL_MS, () => scanCodexSessions(100)).map((s) => {
+    return ttlGet('codex-sessions', SCAN_TTL_MS, () => scanCodexSessions(CLI_SESSION_SCAN_LIMIT)).map((s) => {
       const lastMsg = s.lastMessageAt ? new Date(s.lastMessageAt).getTime() : 0
       const firstMsg = s.firstMessageAt ? new Date(s.firstMessageAt).getTime() : 0
       const title = s.lastUserPrompt || null
@@ -106,7 +115,7 @@ export function getLocalCodexSessions(): SessionListItem[] {
 
 export function getLocalHermesSessions(): SessionListItem[] {
   try {
-    return ttlGet('hermes-sessions', SCAN_TTL_MS, () => scanHermesSessions(100)).map((s) => {
+    return ttlGet('hermes-sessions', SCAN_TTL_MS, () => scanHermesSessions(CLI_SESSION_SCAN_LIMIT)).map((s) => {
       const lastMsg = s.lastMessageAt ? new Date(s.lastMessageAt).getTime() : 0
       const firstMsg = s.firstMessageAt ? new Date(s.firstMessageAt).getTime() : 0
       return {
@@ -138,7 +147,7 @@ export function getLocalHermesSessions(): SessionListItem[] {
 
 export function getLocalOpenCodeSessions(): SessionListItem[] {
   try {
-    return ttlGet('opencode-sessions', SCAN_TTL_MS, () => scanOpenCodeSessions(100)).map((s) => {
+    return ttlGet('opencode-sessions', SCAN_TTL_MS, () => scanOpenCodeSessions(CLI_SESSION_SCAN_LIMIT)).map((s) => {
       const lastMsg = s.lastMessageAt ? new Date(s.lastMessageAt).getTime() : 0
       return {
         id: s.sessionId,

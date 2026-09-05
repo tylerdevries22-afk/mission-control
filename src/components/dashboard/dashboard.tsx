@@ -5,13 +5,15 @@ import { apiFetch } from '@/lib/api-client'
 import { useMissionControl } from '@/store'
 import { useNavigateToPanel } from '@/lib/navigation'
 import { useSmartPoll } from '@/lib/use-smart-poll'
-import { SignalPill, getLocalOsStatus, getProviderHealth, getMcHealth } from './widget-primitives'
+import { getLocalOsStatus, getMcHealth } from './widget-primitives'
 import { OnboardingChecklistWidget } from './widgets/onboarding-checklist-widget'
 import { EmptyStateLaunchpad } from './empty-state-launchpad'
 import { WidgetGrid } from './widget-grid'
 import { FleetLogosStrip } from './widgets/fleet-logos-strip'
-import type { DbStats, ClaudeStats, LogLike, DashboardData } from './widget-primitives'
+import type { DbStats, ClaudeStats, DashboardData } from './widget-primitives'
 import { claudeFleetPlanTotalUsd, formatClaudeFleetLabels } from '@/lib/claude-fleet-plans'
+import { buildCliFleets, type DashboardSession } from '@/lib/dashboard-cli-fleets'
+import { localSessionLogs, mergeRecentLogs } from '@/lib/dashboard-session-logs'
 
 export function Dashboard() {
   const {
@@ -28,26 +30,15 @@ export function Dashboard() {
 
   const navigateToPanel = useNavigateToPanel()
   const isLocal = dashboardMode === 'local'
-
-  const subscriptionLabel = formatClaudeFleetLabels()
-  const subscriptionPrice = claudeFleetPlanTotalUsd()
-
   const [systemStats, setSystemStats] = useState<any>(null)
   const [dbStats, setDbStats] = useState<DbStats | null>(null)
   const [claudeStats, setClaudeStats] = useState<ClaudeStats | null>(null)
   const [githubStats, setGithubStats] = useState<any>(null)
   const [hermesCronJobCount, setHermesCronJobCount] = useState(0)
-  const [loading, setLoading] = useState({
-    system: true,
-    sessions: true,
-    claude: true,
-    github: true,
-  })
+  const [loading, setLoading] = useState({ system: true, sessions: true, claude: true, github: true })
 
   const loadDashboard = useCallback(async () => {
-    const requests: Promise<void>[] = []
-
-    requests.push(
+    const requests: Promise<void>[] = [
       apiFetch<any>('/api/status?action=dashboard')
         .then((data) => {
           if (data && !data.error) {
@@ -56,152 +47,44 @@ export function Dashboard() {
           }
         })
         .catch(() => {})
-        .finally(() => setLoading(prev => ({ ...prev, system: false })))
-    )
-
-    requests.push(
-      apiFetch<any>('/api/sessions')
+        .finally(() => setLoading((prev) => ({ ...prev, system: false }))),
+      apiFetch<{ sessions?: DashboardSession[] }>('/api/sessions?limit=all')
         .then((data) => {
-          if (data && !data.error) setSessions(data.sessions || data)
+          if (data?.sessions) setSessions(data.sessions as Parameters<typeof setSessions>[0])
         })
         .catch(() => {})
-        .finally(() => setLoading(prev => ({ ...prev, sessions: false })))
-    )
+        .finally(() => setLoading((prev) => ({ ...prev, sessions: false }))),
+    ]
 
     if (isLocal) {
       requests.push(
-        apiFetch<any>('/api/claude/sessions')
-          .then((data) => {
-            if (data?.stats) setClaudeStats(data.stats)
-          })
-          .catch(() => {})
-          .finally(() => setLoading(prev => ({ ...prev, claude: false })))
-      )
-
-      requests.push(
-        apiFetch<any>('/api/github?action=stats')
-          .then((data) => {
-            if (data && !data.error) setGithubStats(data)
-          })
-          .catch(() => {})
-          .finally(() => setLoading(prev => ({ ...prev, github: false })))
-      )
-
-      requests.push(
-        apiFetch<any>('/api/hermes')
-          .then((data) => {
-            if (data?.cronJobCount != null) setHermesCronJobCount(data.cronJobCount)
-          })
-          .catch(() => {})
+        apiFetch<any>('/api/claude/sessions').then((data) => { if (data?.stats) setClaudeStats(data.stats) }).catch(() => {}).finally(() => setLoading((prev) => ({ ...prev, claude: false }))),
+        apiFetch<any>('/api/github?action=stats').then((data) => { if (data && !data.error) setGithubStats(data) }).catch(() => {}).finally(() => setLoading((prev) => ({ ...prev, github: false }))),
+        apiFetch<any>('/api/hermes').then((data) => { if (data?.cronJobCount != null) setHermesCronJobCount(data.cronJobCount) }).catch(() => {}),
       )
     } else {
-      setLoading(prev => ({ ...prev, claude: false, github: false }))
+      setLoading((prev) => ({ ...prev, claude: false, github: false }))
     }
 
     await Promise.allSettled(requests)
   }, [isLocal, setSessions])
 
-  useSmartPoll(loadDashboard, isLocal ? 15000 : 60000, { pauseWhenConnected: true })
+  useSmartPoll(loadDashboard, isLocal ? 15000 : 60000, { pauseWhenConnected: !isLocal })
 
-  // Computed values
-  const isSystemLoading = loading.system && !systemStats
-  const isSessionsLoading = loading.sessions && sessions.length === 0
-  const isClaudeLoading = isLocal && loading.claude && !claudeStats
-  const isGithubLoading = isLocal && loading.github && !githubStats
-
-  const memPct = systemStats?.memory?.total
-    ? Math.round((systemStats.memory.used / systemStats.memory.total) * 100)
-    : null
-
-  const diskPct = parseInt(systemStats?.disk?.usage || '', 10)
-  const systemLoad = Math.max(memPct ?? 0, Number.isFinite(diskPct) ? diskPct : 0)
-
-  const activeSessions = sessions.filter((s) => s.active).length
-  const errorCount = logs.filter((l) => l.level === 'error').length
-  const onlineAgents = dbStats
-    ? dbStats.agents.total - (dbStats.agents.byStatus?.offline ?? 0)
-    : agents.filter((a) => a.status !== 'offline').length
-
-  const claudeLocalSessions = sessions.filter((s) => s.kind === 'claude-code')
-  const codexLocalSessions = sessions.filter((s) => s.kind === 'codex-cli')
-  const hermesLocalSessions = sessions.filter((s) => s.kind === 'hermes')
-  const claudeActive = claudeLocalSessions.filter((s) => s.active).length
-  const codexActive = codexLocalSessions.filter((s) => s.active).length
-  const hermesActive = hermesLocalSessions.filter((s) => s.active).length
-
-  const runningTasks = dbStats?.tasks.byStatus?.in_progress ?? tasks.filter((t) => t.status === 'in_progress').length
-  const inboxCount = dbStats?.tasks.byStatus?.inbox ?? 0
-  const assignedCount = dbStats?.tasks.byStatus?.assigned ?? 0
-  const reviewCount = (dbStats?.tasks.byStatus?.review ?? 0) + (dbStats?.tasks.byStatus?.quality_review ?? 0)
-  const doneCount = dbStats?.tasks.byStatus?.done ?? 0
-  const backlogCount = inboxCount + assignedCount + reviewCount
-
-  const localOsStatus = isSystemLoading
-    ? { value: 'Loading...', status: 'warn' as const }
-    : getLocalOsStatus(memPct, Number.isFinite(diskPct) ? diskPct : null)
-
-  const claudeHealth = isClaudeLoading
-    ? { value: 'Loading...', status: 'warn' as const }
-    : getProviderHealth(claudeStats?.active_sessions ?? claudeActive, claudeStats?.total_sessions ?? claudeLocalSessions.length)
-
-  const codexHealth = isSessionsLoading
-    ? { value: 'Loading...', status: 'warn' as const }
-    : getProviderHealth(codexActive, codexLocalSessions.length)
-
-  const hermesHealth = isSessionsLoading
-    ? { value: 'Loading...', status: 'warn' as const }
-    : getProviderHealth(hermesActive, hermesLocalSessions.length)
-
-  const mcHealth = isSystemLoading
-    ? { value: 'Loading...', status: 'warn' as const }
-    : getMcHealth(systemStats, dbStats, errorCount)
-
-  const localSessionLogs: LogLike[] = isLocal
-    ? sessions.reduce<LogLike[]>((acc, session) => {
-        const ts = session.lastActivity || session.startTime || 0
-        if (!ts) return acc
-
-        const lastPrompt = typeof (session as any).lastUserPrompt === 'string'
-          ? (session as any).lastUserPrompt.trim()
-          : ''
-
-        acc.push({
-          id: `local-session-${session.id}-${ts}`,
-          timestamp: ts,
-          level: 'info',
-          source: session.kind === 'codex-cli' ? 'codex-local' : session.kind === 'hermes' ? 'hermes-local' : session.kind === 'grok' ? 'grok-local' : session.kind === 'kimi' ? 'kimi-local' : 'claude-local',
-          message: lastPrompt
-            ? `Prompt: ${lastPrompt}`
-            : `${session.active ? 'Active' : 'Idle'} session: ${session.key || session.id}`,
-        })
-        return acc
-      }, [])
-    : []
-
-  const mergedRecentLogs: LogLike[] = (isLocal ? [...logs, ...localSessionLogs] : logs)
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .filter((entry, index, arr) => arr.findIndex((x) => x.id === entry.id) === index)
-    .slice(0, 10)
-
-  const recentErrorLogs = mergedRecentLogs.filter((log) => log.level === 'error').length
-  const gatewayHealthStatus = connection.isConnected ? 'good' as const : 'bad' as const
-
-  const openSession = useCallback((session: any) => {
-    const kind = String(session?.kind || '')
-    const sid = String(session?.id || '')
-    if (!sid) return
-    setActiveConversation(`session:${kind}:${sid}`)
+  const openSession = useCallback((session: DashboardSession) => {
+    if (!session.id) return
+    setActiveConversation(`session:${session.kind || 'gateway'}:${session.id}`)
     navigateToPanel('chat')
   }, [setActiveConversation, navigateToPanel])
 
-  const dashboardData: DashboardData = {
+  const dashboardData = buildDashboardView({
     isLocal,
     systemStats,
     dbStats,
     claudeStats,
     githubStats,
     loading,
-    sessions,
+    sessions: sessions as DashboardSession[],
     logs,
     agents,
     tasks,
@@ -209,40 +92,10 @@ export function Dashboard() {
     subscription,
     navigateToPanel,
     openSession,
-    memPct,
-    diskPct,
-    systemLoad,
-    activeSessions,
-    errorCount,
-    onlineAgents,
-    claudeActive,
-    codexActive,
-    hermesActive,
-    claudeLocalSessions,
-    codexLocalSessions,
-    hermesLocalSessions,
-    runningTasks,
-    inboxCount,
-    assignedCount,
-    reviewCount,
-    doneCount,
-    backlogCount,
-    mergedRecentLogs,
-    recentErrorLogs,
-    localOsStatus,
-    claudeHealth,
-    codexHealth,
-    hermesHealth,
-    mcHealth,
-    gatewayHealthStatus,
-    isSystemLoading,
-    isSessionsLoading,
-    isClaudeLoading,
-    isGithubLoading,
     hermesCronJobCount,
-    subscriptionLabel,
-    subscriptionPrice,
-  }
+    subscriptionLabel: formatClaudeFleetLabels(),
+    subscriptionPrice: claudeFleetPlanTotalUsd(),
+  })
 
   return (
     <div className="p-5 space-y-4">
@@ -256,4 +109,46 @@ export function Dashboard() {
       <WidgetGrid data={dashboardData} />
     </div>
   )
+}
+
+function buildDashboardView(input: Omit<DashboardData, 'cliFleets' | 'memPct' | 'diskPct' | 'systemLoad' | 'activeSessions' | 'errorCount' | 'onlineAgents' | 'runningTasks' | 'inboxCount' | 'assignedCount' | 'reviewCount' | 'doneCount' | 'backlogCount' | 'mergedRecentLogs' | 'recentErrorLogs' | 'localOsStatus' | 'mcHealth' | 'gatewayHealthStatus' | 'isSystemLoading' | 'isSessionsLoading' | 'isClaudeLoading' | 'isGithubLoading'>): DashboardData {
+  const { isLocal, systemStats, dbStats, claudeStats, githubStats, loading, sessions, logs, agents, tasks, connection } = input
+  const isSystemLoading = loading.system && !systemStats
+  const isSessionsLoading = loading.sessions && sessions.length === 0
+  const memPct = systemStats?.memory?.total ? Math.round((systemStats.memory.used / systemStats.memory.total) * 100) : null
+  const diskPct = parseInt(systemStats?.disk?.usage || '', 10)
+  const errorCount = logs.filter((log) => log.level === 'error').length
+  const inboxCount = dbStats?.tasks.byStatus?.inbox ?? 0
+  const assignedCount = dbStats?.tasks.byStatus?.assigned ?? 0
+  const reviewCount = (dbStats?.tasks.byStatus?.review ?? 0) + (dbStats?.tasks.byStatus?.quality_review ?? 0)
+  const mergedRecentLogs = mergeRecentLogs(logs, isLocal ? localSessionLogs(sessions) : [])
+  const cliFleets = buildCliFleets(sessions, {
+    'claude-code': { cost: claudeStats?.total_estimated_cost ?? null },
+  })
+
+  return {
+    ...input,
+    memPct,
+    diskPct,
+    systemLoad: Math.max(memPct ?? 0, Number.isFinite(diskPct) ? diskPct : 0),
+    activeSessions: sessions.filter((session) => session.active).length,
+    errorCount,
+    onlineAgents: dbStats ? dbStats.agents.total - (dbStats.agents.byStatus?.offline ?? 0) : agents.filter((agent) => agent.status !== 'offline').length,
+    cliFleets,
+    runningTasks: dbStats?.tasks.byStatus?.in_progress ?? tasks.filter((task) => task.status === 'in_progress').length,
+    inboxCount,
+    assignedCount,
+    reviewCount,
+    doneCount: dbStats?.tasks.byStatus?.done ?? 0,
+    backlogCount: inboxCount + assignedCount + reviewCount,
+    mergedRecentLogs,
+    recentErrorLogs: mergedRecentLogs.filter((log) => log.level === 'error').length,
+    localOsStatus: isSystemLoading ? { value: 'Loading...', status: 'warn' } : getLocalOsStatus(memPct, Number.isFinite(diskPct) ? diskPct : null),
+    mcHealth: isSystemLoading ? { value: 'Loading...', status: 'warn' } : getMcHealth(systemStats, dbStats, errorCount),
+    gatewayHealthStatus: connection.isConnected ? 'good' : 'bad',
+    isSystemLoading,
+    isSessionsLoading,
+    isClaudeLoading: isLocal && loading.claude && !claudeStats,
+    isGithubLoading: isLocal && loading.github && !githubStats,
+  }
 }

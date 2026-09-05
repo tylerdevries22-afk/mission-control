@@ -407,7 +407,7 @@ export default function Home() {
         .then((agentsData) => {
           if (agentsData?.agents) setAgents(agentsData.agents as Parameters<typeof setAgents>[0])
         }),
-      apiFetch<{ sessions?: unknown }>('/api/sessions')
+      apiFetch<{ sessions?: unknown }>('/api/sessions?limit=all')
         .then((sessionsData) => {
           if (sessionsData?.sessions) setSessions(sessionsData.sessions as Parameters<typeof setSessions>[0])
         }),

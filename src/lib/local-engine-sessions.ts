@@ -1,3 +1,4 @@
+import { CLI_SESSION_SCAN_LIMIT } from './cli-session-kinds'
 import { scanGrokSessions } from './grok-sessions'
 import { scanKimiSessions } from './kimi-sessions'
 import { logger } from './logger'
@@ -42,7 +43,7 @@ function mapEngineRow(kind: 'grok' | 'kimi', row: {
 
 export function getLocalGrokSessions() {
   try {
-    return scanGrokSessions(100).map((row) => mapEngineRow('grok', row))
+    return scanGrokSessions(CLI_SESSION_SCAN_LIMIT).map((row) => mapEngineRow('grok', row))
   } catch (err) {
     logger.warn({ err }, 'Failed to read local Grok sessions')
     return []
@@ -51,7 +52,7 @@ export function getLocalGrokSessions() {
 
 export function getLocalKimiSessions() {
   try {
-    return scanKimiSessions(100).map((row) => mapEngineRow('kimi', row))
+    return scanKimiSessions(CLI_SESSION_SCAN_LIMIT).map((row) => mapEngineRow('kimi', row))
   } catch (err) {
     logger.warn({ err }, 'Failed to read local Kimi sessions')
     return []
