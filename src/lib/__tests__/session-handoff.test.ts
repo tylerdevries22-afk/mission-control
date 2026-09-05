@@ -210,9 +210,11 @@ describe('POST /api/sessions/handoff', () => {
     expect(await spawned.json()).toMatchObject({
       ok: true, mode: 'spawn', kind: 'grok', id: '550e8400-e29b-41d4-a716-446655440000',
     })
-    const spawnArgs = mocks.runCommand.mock.calls.at(1) as [string, string[]] | undefined
+    const spawnArgs = mocks.runCommand.mock.calls.at(1) as [string, string[], { env?: NodeJS.ProcessEnv }] | undefined
     expect(spawnArgs?.[1]).toEqual(expect.arrayContaining(['-p']))
     expect(spawnArgs?.[1]).not.toContain('--resume')
+    expect(mocks.pin).toHaveBeenCalled()
+    expect(spawnArgs?.[2]?.env?.CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBe('160000')
   })
 
   it('returns pending id when spawn output has no UUID and honors auth isolation', async () => {

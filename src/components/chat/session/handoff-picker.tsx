@@ -17,8 +17,8 @@ import { modelPickerLabel } from '@/lib/chat-display'
 import { IconCheck } from '../desktop/chat-icons'
 
 export const HANDOFF_SEATS: { id: FleetAgentName; engine: EngineId; label: string }[] = [
-  { id: 'claude-20x', engine: 'claude', label: '20x' },
-  { id: 'claude-5x', engine: 'claude', label: '5x' },
+  { id: 'claude-1', engine: 'claude', label: 'Claude 1' },
+  { id: 'claude-2', engine: 'claude', label: 'Claude 2' },
   { id: 'codex', engine: 'codex', label: 'Codex' },
   { id: 'grok', engine: 'grok', label: 'Grok' },
   { id: 'kimi', engine: 'kimi', label: 'Kimi' },
