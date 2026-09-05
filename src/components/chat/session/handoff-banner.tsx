@@ -6,7 +6,8 @@ import { apiFetch } from '@/lib/api-client'
 import type { SessionTranscriptMessage } from '../session-message'
 import { IconClock, IconClose } from '../desktop/chat-icons'
 import { HandoffPicker } from './handoff-picker'
-import type { EngineId } from '@/lib/chat-model-groups'
+import { handoffKindFromAgent } from '@/lib/adaptive-context-agent'
+import type { FleetAgentName } from '@/lib/fleet-agents'
 
 function dismissKey(id: string): string {
   return `mc.chat-handoff-dismissed.${id}`
@@ -33,6 +34,7 @@ export function transcriptExcerpt(messages: SessionTranscriptMessage[], cap = 80
 export function HandoffBanner({
   sessionId,
   sourceKind,
+  sourceAgent,
   sourceId,
   title,
   project,
@@ -42,6 +44,7 @@ export function HandoffBanner({
 }: {
   sessionId: string
   sourceKind: string
+  sourceAgent?: string
   sourceId: string
   title: string
   project: string
@@ -86,16 +89,18 @@ export function HandoffBanner({
     setHidden(true)
   }
 
-  const confirm = async (engine: EngineId, model: string) => {
+  const confirm = async (agent: FleetAgentName, model: string) => {
     setBusy(true)
-    const targetKind = engine === 'claude' ? 'claude-code' : engine === 'codex' ? 'codex-cli' : engine
+    const targetKind = handoffKindFromAgent(agent)
     try {
       const data = await apiFetch<Record<string, unknown>>('/api/sessions/handoff', {
         method: 'POST',
         body: JSON.stringify({
           sourceKind,
+          sourceAgent,
           sourceId,
           targetKind,
+          targetAgent: agent,
           targetModel: model,
           title,
           project,
@@ -143,7 +148,7 @@ export function HandoffBanner({
           <IconClose />
         </button>
       </div>
-      {open && <HandoffPicker onConfirm={(engine, model) => { void confirm(engine, model) }} busy={busy} />}
+      {open && <HandoffPicker onConfirm={(agent, model) => { void confirm(agent, model) }} busy={busy} />}
     </div>
   )
 }

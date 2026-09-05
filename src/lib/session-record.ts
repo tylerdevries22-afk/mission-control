@@ -1,4 +1,9 @@
-import { isFleetAgentName, type FleetAgentName } from '@/lib/fleet-agents'
+import {
+  asFleetAgentName,
+  fleetAgentFromWorkspace,
+  fleetAgentsShareIdentity,
+  type FleetAgentName,
+} from '@/lib/fleet-agents'
 import { matchFleetProject } from '@/lib/fleet-cwd'
 
 export type SessionEnvironment = 'local' | 'gateway' | 'desktop'
@@ -36,15 +41,13 @@ export function fleetAgentForSession(input: {
   workingDir?: string | null
   gatewayAgent?: string | null
 }): FleetAgentName {
-  const dir = input.workingDir || ''
-  if (dir.includes('workspace-claude-20x')) return 'claude-20x'
-  if (dir.includes('workspace-claude-5x')) return 'claude-5x'
   const id = input.sessionId || ''
   if (id.startsWith('grok:') || input.kind === 'grok') return 'grok'
   if (id.startsWith('kimi:') || input.kind === 'kimi') return 'kimi'
   if (id.startsWith('codex:') || input.kind === 'codex-cli') return 'codex'
-  if (input.gatewayAgent && isFleetAgentName(input.gatewayAgent)) return input.gatewayAgent
-  return 'claude-20x'
+  const gateway = input.gatewayAgent ? asFleetAgentName(input.gatewayAgent) : null
+  if (gateway) return gateway
+  return fleetAgentFromWorkspace(input.workingDir)
 }
 
 export function sessionEnvironment(input: {
@@ -66,7 +69,7 @@ export function attachProject(workingDir: string | null | undefined): {
 }
 
 export function claudeSeatsShareHistory(left: string, right: string): boolean {
-  return (left === 'claude-20x' || left === 'claude-5x') && (right === 'claude-20x' || right === 'claude-5x')
+  return fleetAgentsShareIdentity(left, right)
 }
 
 export function matchesSessionFilters(

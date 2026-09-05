@@ -15,6 +15,7 @@
 import { createReadStream, readdirSync, statSync } from 'fs'
 import { createInterface } from 'readline'
 import { join } from 'path'
+import { claudeSessionHomes } from './claude-config-dir'
 import { config } from './config'
 import { getDatabase } from './db'
 import { logger } from './logger'
@@ -259,18 +260,21 @@ async function parseSessionFile(filePath: string, projectSlug: string, fileMtime
 
 /** Scan all Claude Code projects and discover sessions */
 export async function scanClaudeSessions(): Promise<SessionStats[]> {
-  const claudeHome = config.claudeHome
-  if (!claudeHome) return []
+  const sessions: SessionStats[] = []
+  for (const claudeHome of claudeSessionHomes(config.claudeHome)) {
+    await scanClaudeHome(claudeHome, sessions)
+  }
+  return sessions
+}
 
+async function scanClaudeHome(claudeHome: string, sessions: SessionStats[]): Promise<void> {
   const projectsDir = join(claudeHome, 'projects')
   let projectDirs: string[]
   try {
     projectDirs = readdirSync(projectsDir)
   } catch {
-    return [] // No projects directory — Claude Code not installed or never used
+    return
   }
-
-  const sessions: SessionStats[] = []
 
   for (const projectSlug of projectDirs) {
     const projectDir = join(projectsDir, projectSlug)
@@ -313,8 +317,6 @@ export async function scanClaudeSessions(): Promise<SessionStats[]> {
       }
     }
   }
-
-  return sessions
 }
 
 // Throttle full disk scans — at most once per 30 seconds

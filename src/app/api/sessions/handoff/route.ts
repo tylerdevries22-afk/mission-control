@@ -6,9 +6,12 @@ import { logger } from '@/lib/logger'
 import { heavyLimiter } from '@/lib/rate-limit'
 import { denyUnscopedResourceForStrictWorkspace } from '@/lib/workspace-isolation'
 import { continueEffort, continueModelId } from '@/lib/session-continue-model'
+import { fleetAgentFromHandoff, sameHandoffSeat } from '@/lib/adaptive-context-agent'
+import { pinAdaptiveContext, type AdaptiveHandoffPin } from '@/lib/adaptive-context-handoff'
 import { buildHandoffBrief } from '@/lib/handoff-brief'
 import { gitSnapshot } from '@/lib/handoff-git'
 import { readKindTranscript } from '@/lib/session-transcript-read'
+import type { FleetAgentName } from '@/lib/fleet-agents'
 import {
   asTrimmedString,
   buildHandoffCommand,
@@ -34,6 +37,8 @@ interface HandoffRequest {
   title: string
   excerpt: string
   project: string
+  sourceAgent: FleetAgentName
+  targetAgent: FleetAgentName
   note?: string
   modelId?: string
   effort?: string
@@ -75,6 +80,8 @@ function parsedHandoff(
   const title = asTrimmedString(body.title) || 'Untitled'
   return {
     sourceKind, targetKind, sourceId, title, excerpt, project,
+    sourceAgent: fleetAgentFromHandoff(sourceKind, asTrimmedString(body.sourceAgent)),
+    targetAgent: fleetAgentFromHandoff(targetKind, asTrimmedString(body.targetAgent)),
     note: asTrimmedString(body.note) || undefined,
     modelId: continueModelId(targetKind, asTrimmedString(body.targetModel), body.fast === true),
     effort: continueEffort(targetKind, asTrimmedString(body.effort)),
@@ -82,9 +89,12 @@ function parsedHandoff(
 }
 
 async function executeHandoff(input: HandoffRequest) {
-  const resume = input.targetKind === input.sourceKind
+  const resume = sameHandoffSeat(input.sourceKind, input.targetKind, input.sourceAgent, input.targetAgent)
   const messages = readKindTranscript(input.sourceKind, input.sourceId, 80)
   const cwd = await resolveSessionCwd(input.sourceId, input.project)
+  const pin = await pinAdaptiveContext({
+    from: input.sourceAgent, to: input.targetAgent, cwd, title: input.title, excerpt: input.excerpt,
+  })
   const prompt = buildHandoffBrief({
     title: input.title,
     sourceKind: input.sourceKind,
@@ -94,8 +104,11 @@ async function executeHandoff(input: HandoffRequest) {
     excerpt: input.excerpt,
     note: input.note,
     git: gitSnapshot(cwd),
+    sourceAgent: pin.from,
+    targetAgent: pin.to,
+    window: pin.window,
   })
-  const spec = await makeSpec(input, resume, prompt, cwd)
+  const spec = await makeSpec(input, resume, prompt, cwd, pin)
   try {
     const result = await runHandoffWithRetry(spec)
     const combined = `${result.stdout}\n${result.stderr}`
@@ -105,13 +118,17 @@ async function executeHandoff(input: HandoffRequest) {
       kind: input.targetKind,
       id: resume ? input.sourceId : parseSpawnedSessionId(combined) || `pending:${input.targetKind}`,
       reply: await readReply(spec, result),
+      window: pin.window,
+      fromAgent: pin.from,
+      toAgent: pin.to,
+      compactRequired: pin.compactRequired,
     }
   } finally {
     await unlinkQuiet(spec.outputPath)
   }
 }
 
-async function makeSpec(input: HandoffRequest, resume: boolean, prompt: string, cwd: string) {
+async function makeSpec(input: HandoffRequest, resume: boolean, prompt: string, cwd: string, pin: AdaptiveHandoffPin) {
   return buildHandoffCommand({
     kind: input.targetKind,
     resumeId: resume ? input.sourceId : null,
@@ -120,6 +137,8 @@ async function makeSpec(input: HandoffRequest, resume: boolean, prompt: string, 
     effort: input.effort,
     cwd,
     bin: await resolveExecutable(handoffBinName(input.targetKind)),
+    extraArgs: pin.argv,
+    env: { ...process.env, ...pin.env },
     outputPath: input.targetKind === 'codex-cli'
       ? path.join('/tmp', `mc-codex-handoff-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`)
       : undefined,

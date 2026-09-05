@@ -48,8 +48,8 @@ export function ChatProjectList({
   const [filterOpen, setFilterOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
-  const orderedPinned = applyFolderOrder(pinned, folderOrder)
-  const orderedRest = applyFolderOrder(rest, folderOrder)
+  const orderedPinned = filters.sortBy === 'activity' ? pinned : applyFolderOrder(pinned, folderOrder)
+  const orderedRest = filters.sortBy === 'activity' ? rest : applyFolderOrder(rest, folderOrder)
   const keys = [...orderedPinned, ...orderedRest].map((row) => row.key)
   const dnd = useFolderDnd({ keys, onReorder: onReorder ?? (() => undefined), listRef })
   const folderShared = {

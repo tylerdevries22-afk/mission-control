@@ -46,6 +46,9 @@ export function buildHandoffBrief(input: {
   excerpt?: string
   note?: string
   git?: string
+  sourceAgent?: string
+  targetAgent?: string
+  window?: number
 }): string {
   const artifacts = extractSessionArtifacts(input.messages)
     .map((item) => `- ${item.title}${item.url ? ` ${item.url}` : ''}${item.path ? ` (${item.path})` : ''}`)
@@ -62,6 +65,9 @@ export function buildHandoffBrief(input: {
     `Source session: ${input.sourceId}`,
     `Project: ${clipExcerpt(input.project, 400)}`,
   ]
+  if (input.sourceAgent) parts.push(`Source agent: ${input.sourceAgent}`)
+  if (input.targetAgent) parts.push(`Target agent: ${input.targetAgent}`)
+  if (input.window) parts.push(`Shared context window: ${input.window}`)
   if (prs) parts.push(`Pull requests:\n${prs}`)
   if (artifacts) parts.push(`Artifacts:\n${artifacts}`)
   if (files) parts.push(`Files touched:\n${files}`)

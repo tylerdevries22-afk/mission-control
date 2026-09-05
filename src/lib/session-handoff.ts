@@ -62,6 +62,7 @@ export interface HandoffCommand {
   input?: string
   cwd?: string
   outputPath?: string
+  env?: NodeJS.ProcessEnv
 }
 interface CommandInput {
   kind: HandoffKind
@@ -72,13 +73,16 @@ interface CommandInput {
   cwd: string
   bin: string
   outputPath?: string
+  extraArgs?: string[]
+  env?: NodeJS.ProcessEnv
 }
 
 export function buildHandoffCommand(input: CommandInput): HandoffCommand {
-  if (input.kind === 'claude-code') return claudeCommand(input)
-  if (input.kind === 'grok') return grokCommand(input)
-  if (input.kind === 'kimi') return kimiCommand(input)
-  return codexCommand(input)
+  const spec = input.kind === 'claude-code' ? claudeCommand(input)
+    : input.kind === 'grok' ? grokCommand(input)
+      : input.kind === 'kimi' ? kimiCommand(input)
+        : codexCommand(input)
+  return { ...spec, env: input.env }
 }
 function claudeCommand(input: CommandInput): HandoffCommand {
   const args = ['--print']
@@ -104,7 +108,7 @@ function kimiCommand(input: CommandInput): HandoffCommand {
 }
 function codexCommand(input: CommandInput): HandoffCommand {
   const outputPath = input.outputPath || '/tmp/mc-codex-handoff.txt'
-  const args = ['exec']
+  const args = [...(input.extraArgs ?? []), 'exec']
   if (input.modelId) args.push('-m', input.modelId)
   if (input.resumeId) args.push('resume', input.resumeId)
   args.push('--skip-git-repo-check', '-o', outputPath)
@@ -118,7 +122,7 @@ function isRetryable(error: unknown): boolean {
 }
 
 export async function runHandoffWithRetry(spec: HandoffCommand): Promise<{ stdout: string; stderr: string }> {
-  const options = { timeoutMs: 180_000, input: spec.input, cwd: spec.cwd }
+  const options = { timeoutMs: 180_000, input: spec.input, cwd: spec.cwd, env: spec.env }
   try {
     return await runCommand(spec.command, spec.args, options)
   } catch (error) {

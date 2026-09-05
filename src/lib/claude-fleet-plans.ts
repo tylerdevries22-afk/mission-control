@@ -1,21 +1,21 @@
 export const CLAUDE_FLEET_PLANS = [
   {
-    identity: 'claude-20x',
+    identity: 'claude-1',
     integrationId: 'claude-max-20x',
     type: 'max_20x',
     label: 'Max 20x',
     priceUsd: 200,
     account: 'personal',
-    homeName: '.claude-20x',
+    homeName: '.claude-account1',
   },
   {
-    identity: 'claude-5x',
+    identity: 'claude-2',
     integrationId: 'claude-max-5x',
     type: 'max_5x',
     label: 'Max 5x',
     priceUsd: 100,
     account: 'stillpoint',
-    homeName: '.claude-5x',
+    homeName: '.claude-account2',
   },
 ] as const
 

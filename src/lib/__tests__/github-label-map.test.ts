@@ -92,7 +92,8 @@ describe('ALL_MC_LABELS', () => {
     const names = ALL_MC_LABELS.map(l => l.name)
     expect(names).toContain('mc:inbox')
     expect(names).toContain('priority:critical')
-    expect(names).toContain('agent:claude-20x')
+    expect(names).toContain('agent:claude-1')
+    expect(names).toContain('agent:claude-2')
     expect(names).toContain('agent:kimi')
   })
 

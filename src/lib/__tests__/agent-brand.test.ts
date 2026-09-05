@@ -3,7 +3,8 @@ import { brandFromAgent, brandLogo } from '@/lib/agent-brand'
 
 describe('agent brand', () => {
   it('maps fleet names and runtimes', () => {
-    expect(brandFromAgent('claude-20x', 'claude')).toBe('claude')
+    expect(brandFromAgent('claude-1', 'claude')).toBe('claude')
+    expect(brandFromAgent('claude-2', 'claude')).toBe('claude')
     expect(brandFromAgent('codex', 'codex')).toBe('codex')
     expect(brandFromAgent('grok', null)).toBe('grok')
     expect(brandFromAgent('kimi', 'kimi')).toBe('kimi')

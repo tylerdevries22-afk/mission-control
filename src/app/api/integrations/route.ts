@@ -52,7 +52,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     category: 'ai',
     envVars: [],
     testable: true,
-    recommendation: 'Personal Max 20x. Concurrent dispatch needs a one-time `CLAUDE_CONFIG_DIR=~/.claude-20x claude auth login`. Heal will not create that directory or copy oauthAccount.',
+    recommendation: 'Personal Max 20x (claude-1). Concurrent dispatch needs a one-time `CLAUDE_CONFIG_DIR=~/.claude-account1 claude auth login`. Heal will not create that directory or copy oauthAccount.',
   },
   {
     id: 'claude-max-5x',
@@ -60,7 +60,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     category: 'ai',
     envVars: [],
     testable: true,
-    recommendation: 'Stillpoint Max 5x. Concurrent dispatch needs a one-time `CLAUDE_CONFIG_DIR=~/.claude-5x claude auth login`. Heal will not create that directory or copy oauthAccount.',
+    recommendation: 'Stillpoint (claude-2). Concurrent dispatch needs a one-time `CLAUDE_CONFIG_DIR=~/.claude-account2 claude auth login`. Heal will not create that directory or copy oauthAccount.',
   },
   { id: 'openai', name: 'OpenAI', category: 'ai', envVars: ['OPENAI_API_KEY'], vaultItem: 'openclaw-openai-api-key', testable: true },
   { id: 'openrouter', name: 'OpenRouter', category: 'ai', envVars: ['OPENROUTER_API_KEY'], vaultItem: 'openclaw-openrouter-api-key', testable: true },

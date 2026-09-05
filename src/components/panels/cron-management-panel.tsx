@@ -154,7 +154,7 @@ export function CronManagementPanel() {
     description: '',
     model: '',
     staggerSeconds: '',
-    agentId: 'claude-20x',
+    agentId: 'claude-1',
   })
 
   const formatRelativeTime = (timestamp: string | number, future = false) => {
@@ -478,7 +478,7 @@ export function CronManagementPanel() {
         description: '',
         model: '',
         staggerSeconds: '',
-        agentId: 'claude-20x',
+        agentId: 'claude-1',
       })
       setFormErrors({})
       setShowAddForm(false)

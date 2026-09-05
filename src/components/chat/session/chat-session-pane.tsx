@@ -1,6 +1,7 @@
 'use client'
 
 import { isTreeKind } from '@/lib/chat-session-identity'
+import { isAgentWorking } from '@/lib/session-transcript-types'
 import { contextPercent, formatDuration, parseSessionTokens, sessionDurationMs } from '@/lib/chat-session-metrics'
 import type { ChatPullRequest } from '@/lib/github-pulls'
 import type { Conversation } from '@/store'
@@ -21,6 +22,7 @@ export function ChatSessionPane({
   prHidden,
   onDismissPr,
   onHandoff,
+  busy = false,
 }: {
   conversation: Conversation
   project: string
@@ -31,6 +33,7 @@ export function ChatSessionPane({
   prHidden: boolean
   onDismissPr: () => void
   onHandoff: (nextId: string | null, kind?: string) => void
+  busy?: boolean
 }) {
   const session = conversation.session
   if (!session) return null
@@ -38,19 +41,21 @@ export function ChatSessionPane({
   const percent = contextPercent(session.tokens, session.model)
   const duration = formatDuration(sessionDurationMs(session.startTime, session.lastActivity))
   const title = conversation.name || session.displayName || session.sessionId
+  const live = isAgentWorking(messages, { active: session.active, busy })
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <SessionHeader title={title} project={project} kind={session.sessionKind} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {loading && messages.length === 0 && <p className="px-8 pt-6 text-[13px] text-[var(--chat-muted)]">Loading…</p>}
         {error && <p className="px-8 pt-6 text-[13px] text-red-400">{error}</p>}
-        <SessionThread messages={messages} />
+        <SessionThread messages={messages} live={live} />
       </div>
       <SessionStatusBar
         tokens={parsed.label !== '0' ? parsed.label : session.tokens}
         duration={duration}
         percent={percent}
-        status={session.active ? 'Active' : 'Idle'}
+        status={busy ? 'Thinking' : session.active ? 'Active' : 'Idle'}
+        live={live}
       />
       <div className="px-6">
         {!prHidden && pr && (
@@ -60,6 +65,7 @@ export function ChatSessionPane({
           <HandoffBanner
             sessionId={conversation.id}
             sourceKind={session.sessionKind}
+            sourceAgent={session.agent}
             sourceId={session.sessionId}
             title={title}
             project={session.workingDir || project}

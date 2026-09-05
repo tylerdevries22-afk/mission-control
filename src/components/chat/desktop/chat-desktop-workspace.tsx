@@ -134,6 +134,7 @@ export function ChatDesktopWorkspace() {
               messages={paneMessages}
               loading={transcript.loading}
               error={transcript.error || sender.error}
+              busy={sender.busy}
               pr={pr}
               prHidden={prHidden}
               onDismissPr={() => setPrHidden(true)}

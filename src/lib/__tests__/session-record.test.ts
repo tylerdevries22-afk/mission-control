@@ -14,11 +14,12 @@ describe('session records', () => {
   })
 
   it('uses fleet identities, not leftover claude', () => {
-    expect(fleetAgentForSession({ kind: 'claude-code', workingDir: '~/Dev/actz-may' })).toBe('claude-20x')
+    expect(fleetAgentForSession({ kind: 'claude-code', workingDir: '~/Dev/actz-may' })).toBe('claude-1')
     expect(fleetAgentForSession({ kind: 'codex-cli' })).toBe('codex')
     expect(fleetAgentForSession({ kind: 'grok' })).toBe('grok')
     expect(fleetAgentForSession({ kind: 'kimi' })).toBe('kimi')
-    expect(fleetAgentForSession({ workingDir: '/x/workspace-claude-5x' })).toBe('claude-5x')
+    expect(fleetAgentForSession({ workingDir: '/x/workspace-claude-5x' })).toBe('claude-2')
+    expect(fleetAgentForSession({ gatewayAgent: 'claude-20x' })).toBe('claude-1')
   })
 
   it('labels desktop Claude vs local vs gateway', () => {
@@ -51,8 +52,10 @@ describe('session records', () => {
     expect(matchesSessionFilters(session, { agent: 'codex', project: 'actz-may' })).toBe(true)
     expect(matchesSessionFilters(session, { agent: 'grok' })).toBe(false)
     expect(matchesSessionFilters(session, { active: '1' })).toBe(false)
-    expect(claudeSeatsShareHistory('claude-20x', 'claude-5x')).toBe(true)
+    expect(claudeSeatsShareHistory('claude-1', 'claude-20x')).toBe(true)
+    expect(claudeSeatsShareHistory('claude-1', 'claude-2')).toBe(false)
     const claude = { ...session, agent: 'claude-20x' }
-    expect(matchesSessionFilters(claude, { agent: 'claude-5x' })).toBe(true)
+    expect(matchesSessionFilters(claude, { agent: 'claude-1' })).toBe(true)
+    expect(matchesSessionFilters(claude, { agent: 'claude-2' })).toBe(false)
   })
 })

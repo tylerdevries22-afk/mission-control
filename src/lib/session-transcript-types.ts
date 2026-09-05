@@ -45,3 +45,16 @@ export function isNoiseUserText(text: string): boolean {
   const trimmed = text.trim()
   return /^(<system-reminder>|<notification|<task-notification)/.test(trimmed)
 }
+
+export function isAgentWorking(
+  messages: TranscriptMessage[],
+  flags: { active?: boolean; busy?: boolean } = {},
+): boolean {
+  if (flags.active || flags.busy) return true
+  const last = messages[messages.length - 1]
+  if (!last || last.role !== 'assistant') return false
+  return last.parts.some((part) => {
+    if (part.type === 'thinking') return true
+    return part.type === 'tool_use' && !part.result
+  })
+}
