@@ -11,9 +11,14 @@ export function workingDirLeaf(path: string | null | undefined): string {
   return parts[parts.length - 1] || path
 }
 
+export function toActivityMs(value: number | undefined | null): number {
+  if (!value || !Number.isFinite(value) || value <= 0) return 0
+  return value > 1_000_000_000_000 ? value : value * 1000
+}
+
 export function relativeTime(fromSeconds: number, nowMs = Date.now()): string {
   if (!fromSeconds) return ''
-  const thenMs = fromSeconds > 1_000_000_000_000 ? fromSeconds : fromSeconds * 1000
+  const thenMs = toActivityMs(fromSeconds)
   const diff = Math.max(0, nowMs - thenMs)
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'now'
