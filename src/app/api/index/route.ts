@@ -138,6 +138,8 @@ const endpoints: Endpoint[] = [
   { path: '/api/audit', methods: ['GET'], description: 'Audit trail', tag: 'System', auth: 'admin' },
   { path: '/api/backup', methods: ['POST'], description: 'Database backup', tag: 'System', auth: 'admin' },
   { path: '/api/cleanup', methods: ['POST'], description: 'Database cleanup', tag: 'System', auth: 'admin' },
+  { path: '/api/system-monitor', methods: ['GET'], description: 'Host CPU, memory, disk, GPU, network, and process metrics', tag: 'System', auth: 'viewer' },
+  { path: '/api/system-monitor/automations', methods: ['GET', 'POST'], description: 'Mac cleanup automation status, thresholds, and safe triggers', tag: 'System', auth: 'viewer/admin' },
   { path: '/api/export', methods: ['GET'], description: 'Data export', tag: 'System', auth: 'viewer' },
   { path: '/api/workload', methods: ['GET'], description: 'Agent workload stats', tag: 'System', auth: 'viewer' },
   { path: '/api/releases/check', methods: ['GET'], description: 'Check for updates', tag: 'System', auth: 'public' },

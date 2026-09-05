@@ -8,6 +8,15 @@ const mocks = vi.hoisted(() => ({
   runCommand: vi.fn(async () => ({ stdout: 'ok', stderr: '', code: 0 })),
   requireRole: vi.fn(() => ({ user: { role: 'operator', username: 'tester' } })),
   deny: vi.fn(() => null as unknown),
+  pin: vi.fn(async (input: { from: string; to: string }) => ({
+    from: input.from,
+    to: input.to,
+    window: 160000,
+    compactRequired: false,
+    env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: '160000', ADAPTIVE_CONTEXT_POLICY_PATH: '/tmp/policy.json' },
+    argv: ['-c', 'model_auto_compact_token_limit=160000'],
+    policyPath: '/tmp/policy.json',
+  })),
 }))
 
 vi.mock('@/lib/command', () => ({ runCommand: mocks.runCommand }))
@@ -26,6 +35,9 @@ vi.mock('@/lib/session-transcript-read', () => ({
 }))
 vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+}))
+vi.mock('@/lib/adaptive-context-handoff', () => ({
+  pinAdaptiveContext: mocks.pin,
 }))
 
 import {
@@ -51,6 +63,7 @@ beforeEach(() => {
   mocks.runCommand.mockResolvedValue({ stdout: 'ok', stderr: '', code: 0 })
   mocks.requireRole.mockReturnValue({ user: { role: 'operator', username: 'tester' } })
   mocks.deny.mockReturnValue(null)
+  mocks.pin.mockClear()
 })
 
 function post(body: Record<string, unknown>) {

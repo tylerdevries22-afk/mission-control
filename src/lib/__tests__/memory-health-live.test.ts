@@ -20,8 +20,8 @@ describe('live openclaw memory health', () => {
     expect(byName.Connectivity.issues.join(' ')).not.toMatch(/session/)
   })
 
-  it('indexes MCP names for claude-20x', () => {
-    const inventory = inventoryForAgent('claude-20x')
+  it('indexes MCP names for claude-1', () => {
+    const inventory = inventoryForAgent('claude-1')
     expect(inventory.runtime).toBe('claude')
     expect(inventory.connectors.length).toBeGreaterThan(0)
   })

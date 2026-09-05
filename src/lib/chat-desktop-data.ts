@@ -1,6 +1,7 @@
 import type { Conversation } from '@/store'
 import type { ChatPullRequest } from './github-pulls'
 import type { ChatSessionItem, SidebarRow } from './group-sessions'
+import { toActivityMs } from './chat-display'
 import { isTreeKind, projectSlugOf, sessionTitle, sessionsForProject } from './chat-session-identity'
 import type { TreeKind } from './chat-session-identity'
 import type { TranscriptMessage } from './session-transcript-types'
@@ -76,7 +77,7 @@ function toSessionItem(conv: Conversation, pulls: ChatPullRequest[]): ChatSessio
       id: conv.id,
     }),
     active: !!conv.session?.active,
-    updatedAt: conv.updatedAt,
+    updatedAt: Math.max(toActivityMs(conv.session?.lastActivity), toActivityMs(conv.updatedAt)),
     workingDir: conv.session?.workingDir || null,
     agent: isTreeKind(kind) ? kind : (conv.session?.agent || ''),
     environment: conv.session?.sessionKind === 'gateway' ? 'gateway' : 'local',
@@ -105,8 +106,13 @@ function toGitLensRow(item: ChatSessionItem & { kind: TreeKind }): GitLensSessio
   }
 }
 
-function sortNewestFirst<T extends { updatedAt: number; id: string }>(rows: T[]): T[] {
-  return [...rows].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
+function sortNewestFirst<T extends { updatedAt: number; id: string; active?: boolean }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const byTime = toActivityMs(b.updatedAt) - toActivityMs(a.updatedAt)
+    if (byTime) return byTime
+    if (Boolean(a.active) !== Boolean(b.active)) return a.active ? -1 : 1
+    return a.id.localeCompare(b.id)
+  })
 }
 
 export function withOptimisticUser(messages: TranscriptMessage[], pending: string | null): TranscriptMessage[] {

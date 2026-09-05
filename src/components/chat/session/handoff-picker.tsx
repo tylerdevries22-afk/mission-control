@@ -12,23 +12,30 @@ import {
   type EngineId,
   type ProviderAccess,
 } from '@/lib/chat-model-groups'
+import type { FleetAgentName } from '@/lib/fleet-agents'
 import { modelPickerLabel } from '@/lib/chat-display'
 import { IconCheck } from '../desktop/chat-icons'
 
-export const HANDOFF_ENGINES: EngineId[] = ['claude', 'codex', 'grok', 'kimi']
+export const HANDOFF_SEATS: { id: FleetAgentName; engine: EngineId; label: string }[] = [
+  { id: 'claude-20x', engine: 'claude', label: '20x' },
+  { id: 'claude-5x', engine: 'claude', label: '5x' },
+  { id: 'codex', engine: 'codex', label: 'Codex' },
+  { id: 'grok', engine: 'grok', label: 'Grok' },
+  { id: 'kimi', engine: 'kimi', label: 'Kimi' },
+]
 
 export function HandoffPicker({
   onConfirm,
   busy,
 }: {
-  onConfirm: (engine: EngineId, model: string) => void
+  onConfirm: (agent: FleetAgentName, model: string) => void
   busy: boolean
 }) {
   const t = useTranslations('chatDesktop')
   const [access, setAccess] = useState<ProviderAccess>({})
-  const [engine, setEngine] = useState<EngineId>('claude')
+  const [seat, setSeat] = useState(HANDOFF_SEATS[0])
   const [model, setModel] = useState(ENGINE_META.claude.defaultAlias)
-  const models = modelsFor(engine, access)
+  const models = modelsFor(seat.engine, access)
 
   useEffect(() => {
     apiFetch<{ providers?: ProviderAccess }>('/api/models/access')
@@ -37,22 +44,22 @@ export function HandoffPicker({
   }, [])
 
   return (
-    <div className="absolute bottom-full left-0 z-30 mb-2 w-[280px] rounded-xl border border-[var(--chat-border)] bg-[var(--chat-elevated)] p-2 shadow-2xl">
-      <div className="mb-1 grid grid-cols-4 gap-1">
-        {HANDOFF_ENGINES.map((id) => (
+    <div className="absolute bottom-full left-0 z-30 mb-2 w-[320px] rounded-xl border border-[var(--chat-border)] bg-[var(--chat-elevated)] p-2 shadow-2xl">
+      <div className="mb-1 grid grid-cols-5 gap-1">
+        {HANDOFF_SEATS.map((item) => (
           <button
-            key={id}
+            key={item.id}
             type="button"
             onClick={() => {
-              setEngine(id)
-              setModel(ENGINE_META[id].defaultAlias)
+              setSeat(item)
+              setModel(ENGINE_META[item.engine].defaultAlias)
             }}
-            className={`flex cursor-pointer flex-col items-center gap-1 rounded-md px-1 py-1.5 text-[11px] duration-200 hover:bg-white/5 ${engine === id ? 'bg-white/8 text-[var(--chat-text)]' : 'text-[var(--chat-muted)]'}`}
-            aria-pressed={engine === id}
-            aria-label={ENGINE_META[id].label}
+            className={`flex cursor-pointer flex-col items-center gap-1 rounded-md px-1 py-1.5 text-[11px] duration-200 hover:bg-white/5 ${seat.id === item.id ? 'bg-white/8 text-[var(--chat-text)]' : 'text-[var(--chat-muted)]'}`}
+            aria-pressed={seat.id === item.id}
+            aria-label={item.label}
           >
-            <EngineLogo engine={id} size={16} />
-            {ENGINE_META[id].label}
+            <EngineLogo engine={item.engine} size={16} />
+            {item.label}
           </button>
         ))}
       </div>
@@ -72,7 +79,7 @@ export function HandoffPicker({
       <button
         type="button"
         disabled={busy}
-        onClick={() => onConfirm(engine, model)}
+        onClick={() => onConfirm(seat.id, model)}
         className="mt-2 flex h-8 w-full cursor-pointer items-center justify-center rounded-md bg-white/10 text-[13px] text-[var(--chat-text)] duration-200 hover:bg-white/15 disabled:opacity-40"
       >
         {t('handoff')}

@@ -8,6 +8,7 @@ import { createClientLogger } from '@/lib/client-logger'
 import { Button } from '@/components/ui/button'
 import { SessionKindAvatar, SessionKindPill } from './session-kind-brand'
 import { SessionFilterBar, type SessionFilterState } from './session-filters'
+import { fleetAgentsShareIdentity } from '@/lib/fleet-agents'
 
 const log = createClientLogger('ConversationList')
 
@@ -367,8 +368,8 @@ export function ConversationList({ onNewConversation }: ConversationListProps) {
       filters.agent
       && session?.agent !== filters.agent
       && c.name !== filters.agent
-      && !((filters.agent === 'claude-20x' || filters.agent === 'claude-5x')
-        && (session?.agent === 'claude-20x' || session?.agent === 'claude-5x'))
+      && !fleetAgentsShareIdentity(filters.agent, session?.agent || '')
+      && !fleetAgentsShareIdentity(filters.agent, c.name || '')
     ) return false
     if (filters.project && session?.project !== filters.project && session?.projectSlug !== filters.project) return false
     if (filters.active === '1' && !session?.active) return false

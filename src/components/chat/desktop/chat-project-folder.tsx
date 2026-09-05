@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { EngineLogoSet } from '@/components/brand/engine-logo'
 import type { SidebarRow } from '@/lib/group-sessions'
+import { ChatLiveDot } from './chat-live-dot'
 import { ChatSessionRow, type GitLensSessionRow } from './chat-session-row'
 import { IconChevron, IconGrip, IconPin } from './chat-icons'
 import type { FolderDragProps } from './use-folder-dnd'
@@ -41,7 +42,8 @@ export function ChatProjectFolder({
 }) {
   const t = useTranslations('chatDesktop')
   const slug = row.key.slice(row.key.indexOf(':') + 1)
-  const children = selected ? sessions : []
+  const open = selected || row.hasActive
+  const children = open ? sessions : []
   return (
     <div
       {...folderProps}
@@ -52,10 +54,11 @@ export function ChatProjectFolder({
         <span className="mr-1 cursor-grab text-[var(--chat-muted)] opacity-50" aria-hidden>
           <IconGrip />
         </span>
-        <button type="button" className="min-w-0 flex-1 cursor-pointer truncate text-left" onClick={() => onSelect(row)}>
-          {row.label}
-          {row.sessionCount > 0 ? <span className="ml-1 text-[11px] opacity-60">{row.sessionCount}</span> : null}
-          {showPr && row.hasPr ? <span className="ml-1 text-[10px] text-[var(--chat-accent)]">PR</span> : null}
+        <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left" onClick={() => onSelect(row)}>
+          <ChatLiveDot live={row.hasActive} label={t(row.hasActive ? 'sessionPill.active' : 'sessionPill.idle')} />
+          <span className="min-w-0 truncate">{row.label}</span>
+          {row.sessionCount > 0 ? <span className="text-[11px] opacity-60">{row.sessionCount}</span> : null}
+          {showPr && row.hasPr ? <span className="text-[10px] text-[var(--chat-accent)]">PR</span> : null}
         </button>
         <button
           type="button"
@@ -77,7 +80,7 @@ export function ChatProjectFolder({
           +
         </button>
         <EngineLogoSet kinds={sessions.map((session) => session.kind)} size={14} />
-        <IconChevron className={`ml-1 opacity-50 ${selected ? 'rotate-90' : ''}`} />
+        <IconChevron className={`ml-1 opacity-50 ${open ? 'rotate-90' : ''}`} />
       </div>
       {children.map((session) => (
         <ChatSessionRow

@@ -42,7 +42,7 @@ export function seedRepoHealthTasks(
     INSERT INTO tasks (
       title, description, status, priority, assigned_to, created_by,
       created_at, updated_at, workspace_id, project_id, metadata
-    ) VALUES (?, ?, ?, 'medium', 'claude-20x', 'scheduler', ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, 'medium', 'claude-1', 'scheduler', ?, ?, ?, ?, ?)
   `)
   const update = db.prepare(
     `UPDATE tasks SET description = ?, status = ?, updated_at = ?, project_id = ? WHERE id = ?`,

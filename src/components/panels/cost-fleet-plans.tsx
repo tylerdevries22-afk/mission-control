@@ -12,7 +12,7 @@ export function CostFleetPlans({ plans }: { plans: ClaudeFleetPlanStatus[] }) {
         <div>
           <h2 className="text-lg font-semibold text-foreground">{formatClaudeFleetLabels()}</h2>
           <p className="text-sm text-muted-foreground">
-            Two Claude Max plans — personal 20x and Stillpoint 5x — not one max.
+            Two isolated seats: claude-1 (personal Max 20x) and claude-2 (Stillpoint).
           </p>
         </div>
         <div className="text-2xl font-bold text-foreground">${total}/mo</div>

@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import type Database from 'better-sqlite3'
+import { renameClaudeFleetAgentRows } from './claude-fleet-rename'
 
 export type Migration = {
   id: string
@@ -1577,6 +1578,12 @@ const migrations: Migration[] = [
       if (!cols.some((col) => col.name === 'custom_title')) {
         db.exec(`ALTER TABLE claude_sessions ADD COLUMN custom_title TEXT DEFAULT NULL`)
       }
+    }
+  },
+  {
+    id: '058_claude_1_2_fleet_identities',
+    up(db: Database.Database) {
+      renameClaudeFleetAgentRows(db)
     }
   }
 ]

@@ -14,7 +14,7 @@ import { resolveWithin } from './paths'
 import { logger } from './logger'
 import { parseJsonRelaxed } from './json-relaxed'
 import { resolveSharedRuntimeWorkspaceId } from './workspace-isolation'
-import { FLEET_AGENT_NAMES } from './fleet-agents'
+import { canonicalFleetAgentName, FLEET_AGENT_ALIASES, FLEET_AGENT_NAMES } from './fleet-agents'
 import {
   findOpenClawAgent,
   listOpenClawAgents,
@@ -219,13 +219,16 @@ function mapAgentToMC(agent: OpenClawAgent): {
   config: any
   soul_content: string | null
 } {
-  const name = agent.identity?.name || agent.name || agent.id
+  const name = canonicalFleetAgentName(agent.identity?.name || agent.name || agent.id)
   const role = agent.identity?.theme || 'agent'
-  // Store the full config minus systemPrompt/soul (which can be large)
+  const identity = {
+    ...(agent.identity && typeof agent.identity === 'object' ? agent.identity : {}),
+    name,
+  }
   const configData = enrichAgentConfigFromWorkspace({
-    openclawId: agent.id,
+    openclawId: name,
     model: agent.model,
-    identity: agent.identity,
+    identity,
     sandbox: agent.sandbox,
     tools: agent.tools,
     subagents: agent.subagents,
@@ -282,6 +285,7 @@ export async function syncAgentsFromConfig(actor: string = 'system', requestedWo
 
   db.transaction(() => {
     for (const agent of agents) {
+      if (agent.id in FLEET_AGENT_ALIASES) continue
       const mapped = mapAgentToMC(agent)
       const configJson = JSON.stringify(mapped.config)
       const existing = findByName.get(mapped.name, workspaceId) as any
@@ -356,6 +360,7 @@ export async function previewSyncDiff(requestedWorkspaceId?: number): Promise<Sy
   const configNames = new Set<string>()
 
   for (const agent of agents) {
+    if (agent.id in FLEET_AGENT_ALIASES) continue
     const mapped = mapAgentToMC(agent)
     configNames.add(mapped.name)
 

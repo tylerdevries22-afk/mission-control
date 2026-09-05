@@ -63,6 +63,46 @@ describe('gitLensByProject', () => {
       }),
     ])
   })
+
+  it('sorts nested sessions by most recent activity', () => {
+    const items = conversationsToItems([
+      conv({
+        id: 'session:claude-code:old',
+        updatedAt: 10,
+        session: {
+          sessionId: 'old',
+          sessionKind: 'claude-code',
+          customTitle: 'Old chat',
+          workingDir: '/Users/tylerdevries/Dev/stillpoint-builders',
+          lastActivity: 10,
+        },
+      }),
+      conv({
+        id: 'session:kimi:new',
+        kind: 'kimi',
+        updatedAt: 50,
+        session: {
+          sessionId: 'new',
+          sessionKind: 'kimi',
+          customTitle: 'New chat',
+          workingDir: '/Users/tylerdevries/Dev/stillpoint-builders',
+          lastActivity: 50,
+        },
+      }),
+    ], [])
+    const map = gitLensByProject(items, {
+      pinned: [],
+      rest: [{
+        key: 'folder:stillpoint-builders',
+        label: 'stillpoint-builders',
+        sessionCount: 2,
+        latestActivity: 50,
+        hasPr: false,
+        hasActive: false,
+      }],
+    })
+    expect(map['folder:stillpoint-builders'].map((row) => row.title)).toEqual(['New chat', 'Old chat'])
+  })
 })
 
 describe('toHomeSessions', () => {

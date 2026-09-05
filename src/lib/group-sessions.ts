@@ -1,5 +1,5 @@
 import { applyFolderOrder } from './chat-folder-order'
-import { workingDirLeaf } from './chat-display'
+import { toActivityMs, workingDirLeaf } from './chat-display'
 
 export type GroupBy = 'folder' | 'project' | 'agent'
 export type SortBy = 'activity' | 'name'
@@ -95,8 +95,17 @@ export function groupKey(session: ChatSessionItem, groupBy: GroupBy): { key: str
 function sortRows(rows: SidebarRow[], sortBy: SortBy): SidebarRow[] {
   return [...rows].sort((a, b) => {
     if (sortBy === 'name') return a.label.localeCompare(b.label)
-    return b.latestActivity - a.latestActivity || a.label.localeCompare(b.label)
+    const byTime = toActivityMs(b.latestActivity) - toActivityMs(a.latestActivity)
+    if (byTime) return byTime
+    if (a.hasActive !== b.hasActive) return a.hasActive ? -1 : 1
+    return a.label.localeCompare(b.label)
   })
+}
+
+function orderSidebarRows(rows: SidebarRow[], sortBy: SortBy, folderOrder: string[]): SidebarRow[] {
+  const sorted = sortRows(rows, sortBy)
+  if (sortBy === 'activity') return sorted
+  return applyFolderOrder(sorted, folderOrder)
 }
 
 export function buildSidebarRows(
@@ -117,14 +126,14 @@ export function buildSidebarRows(
         key,
         label,
         sessionCount: 1,
-        latestActivity: session.updatedAt,
+        latestActivity: toActivityMs(session.updatedAt),
         hasPr: session.hasPr,
         hasActive: session.active,
       })
       continue
     }
     existing.sessionCount += 1
-    existing.latestActivity = Math.max(existing.latestActivity, session.updatedAt)
+    existing.latestActivity = Math.max(existing.latestActivity, toActivityMs(session.updatedAt))
     existing.hasPr = existing.hasPr || session.hasPr
     existing.hasActive = existing.hasActive || session.active
   }
@@ -154,7 +163,7 @@ export function buildSidebarRows(
   }
 
   return {
-    pinned: applyFolderOrder(sortRows(pinned, filters.sortBy), folderOrder),
-    rest: applyFolderOrder(sortRows(rest, filters.sortBy), folderOrder),
+    pinned: orderSidebarRows(pinned, filters.sortBy, folderOrder),
+    rest: orderSidebarRows(rest, filters.sortBy, folderOrder),
   }
 }

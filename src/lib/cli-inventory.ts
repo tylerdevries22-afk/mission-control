@@ -1,4 +1,4 @@
-import { isFleetAgentName, type FleetAgentName } from '@/lib/fleet-agents'
+import { asFleetAgentName, type FleetAgentName } from '@/lib/fleet-agents'
 import {
   listClaudeMcp,
   listCodexAutomations,
@@ -23,10 +23,11 @@ function runtimeOf(name: FleetAgentName): string {
 }
 
 export function inventoryForAgent(name: string): AgentInventory {
-  if (!isFleetAgentName(name)) {
+  const canonical = asFleetAgentName(name)
+  if (!canonical) {
     return { agent: name, runtime: 'unknown', connectors: [], plugins: [], automations: [] }
   }
-  const runtime = runtimeOf(name)
+  const runtime = runtimeOf(canonical)
   const connectors: McpConnector[] = [...listOpenClawExtensions()]
   let plugins: string[] = []
   let automations: string[] = []

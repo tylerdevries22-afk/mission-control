@@ -6,6 +6,7 @@ import {
   pullStatusLabel,
   relativeTime,
   sessionStatusPill,
+  toActivityMs,
   togglePin,
   workingDirLeaf,
 } from '../chat-display'
@@ -29,6 +30,15 @@ describe('workingDirLeaf', () => {
   it('returns empty for missing paths', () => {
     expect(workingDirLeaf(null)).toBe('')
     expect(workingDirLeaf('')).toBe('')
+  })
+})
+
+describe('toActivityMs', () => {
+  it('normalizes seconds and milliseconds', () => {
+    expect(toActivityMs(undefined)).toBe(0)
+    expect(toActivityMs(0)).toBe(0)
+    expect(toActivityMs(100)).toBe(100_000)
+    expect(toActivityMs(1_700_000_000_000)).toBe(1_700_000_000_000)
   })
 })
 

@@ -521,6 +521,27 @@
   }
 }
 
+@utility chat-glimmer-line {
+  position: relative;
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--chat-success) 85%, white) 50%,
+      transparent 100%
+    );
+    transform: translateX(-100%);
+    animation: chatGlimmer 1.6s ease-in-out infinite;
+  }
+}
+
 @utility check-enter {
   /* Step check entrance */
   animation: checkEnter 0.3s ease-out;
@@ -708,6 +729,10 @@
   @keyframes shimmerBar {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(200%); }
+  }
+  @keyframes chatGlimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
   }
   @keyframes checkEnter {
     0% { opacity: 0; transform: scale(0.5); }

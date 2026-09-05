@@ -15,6 +15,7 @@ import { dispatchAssignedTasks, runAegisReviews, requeueStaleTasks, autoRouteInb
 import { spawnRecurringTasks } from './recurring-tasks'
 import { resolveSharedRuntimeWorkspaceId } from './workspace-isolation'
 import { evaluateAllRules } from './alert-evaluate'
+import { runMacCleanupWatch } from './mac-cleanup/watch'
 
 const BACKUP_DIR = join(dirname(config.dbPath), 'backups')
 
@@ -444,6 +445,15 @@ export function initScheduler() {
     running: false,
   })
 
+  tasks.set('mac_cleanup_watch', {
+    name: 'Mac Cleanup Watch',
+    intervalMs: TICK_MS,
+    lastRun: null,
+    nextRun: now + 40_000,
+    enabled: true,
+    running: false,
+  })
+
   // Start the tick loop
   tickInterval = setInterval(tick, TICK_MS)
   logger.info('Scheduler initialized - backup at ~3AM, cleanup at ~4AM, heartbeat every 5m, webhook/claude/skill/local-agent/gateway-agent sync every 60s')
@@ -480,8 +490,9 @@ async function tick() {
       : id === 'recurring_task_spawn' ? 'general.recurring_task_spawn'
       : id === 'stale_task_requeue' ? 'general.stale_task_requeue'
       : id === 'alert_evaluate' ? 'general.alert_evaluate'
+      : id === 'mac_cleanup_watch' ? 'general.mac_cleanup_watch'
       : 'general.agent_heartbeat'
-    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue' || id === 'alert_evaluate'
+    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue' || id === 'alert_evaluate' || id === 'mac_cleanup_watch'
     if (!isSettingEnabled(settingKey, defaultEnabled)) continue
 
     task.running = true
@@ -511,6 +522,7 @@ async function tick() {
             const result = evaluateAllRules(getDatabase(), workspaceId)
             return { ok: true, message: `Alerts: ${result.triggered}/${result.evaluated} triggered, seeded ${result.seeded}` }
           })()
+        : id === 'mac_cleanup_watch' ? await runMacCleanupWatch()
         : await runCleanup()
       task.lastResult = { ...result, timestamp: now }
     } catch (err: any) {
@@ -548,8 +560,9 @@ export function getSchedulerStatus() {
       : id === 'recurring_task_spawn' ? 'general.recurring_task_spawn'
       : id === 'stale_task_requeue' ? 'general.stale_task_requeue'
       : id === 'alert_evaluate' ? 'general.alert_evaluate'
+      : id === 'mac_cleanup_watch' ? 'general.mac_cleanup_watch'
       : 'general.agent_heartbeat'
-    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue' || id === 'alert_evaluate'
+    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue' || id === 'alert_evaluate' || id === 'mac_cleanup_watch'
     result.push({
       id,
       name: task.name,
@@ -583,6 +596,7 @@ export async function triggerTask(taskId: string, workspaceId?: number): Promise
     const result = evaluateAllRules(getDatabase(), resolved)
     return { ok: true, message: `Alerts: ${result.triggered}/${result.evaluated} triggered, seeded ${result.seeded}` }
   }
+  if (taskId === 'mac_cleanup_watch') return runMacCleanupWatch()
   return { ok: false, message: `Unknown task: ${taskId}` }
 }
 
