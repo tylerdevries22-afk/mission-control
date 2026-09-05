@@ -80,6 +80,28 @@ describe('buildSidebarRows', () => {
     expect(rest[0].hasPr).toBe(true)
   })
 
+  it('keeps activity order even when a folder order is persisted', () => {
+    const { rest } = buildSidebarRows(
+      sessions,
+      projects,
+      DEFAULT_CHAT_FILTERS,
+      [],
+      ['folder:actz-may', 'folder:stillpoint-builders'],
+    )
+    expect(rest.map((r) => r.label)).toEqual(['stillpoint-builders', 'actz-may'])
+  })
+
+  it('uses persisted folder order when sorting by name', () => {
+    const { rest } = buildSidebarRows(
+      sessions,
+      projects,
+      { ...DEFAULT_CHAT_FILTERS, sortBy: 'name' },
+      [],
+      ['folder:stillpoint-builders', 'folder:actz-may'],
+    )
+    expect(rest.map((r) => r.label)).toEqual(['stillpoint-builders', 'actz-may'])
+  })
+
   it('puts pinned rows first', () => {
     const { pinned, rest } = buildSidebarRows(
       sessions,

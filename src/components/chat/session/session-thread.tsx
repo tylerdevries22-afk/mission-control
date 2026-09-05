@@ -5,7 +5,13 @@ import type { SessionTranscriptMessage } from '../session-message'
 import { SessionPrChip } from './session-pr-chip'
 import { SessionToolRow } from './session-tool-row'
 
-export function SessionThread({ messages }: { messages: SessionTranscriptMessage[] }) {
+export function SessionThread({
+  messages,
+  live = false,
+}: {
+  messages: SessionTranscriptMessage[]
+  live?: boolean
+}) {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-4 px-8 py-6">
       {messages.map((message, index) => (
@@ -58,6 +64,9 @@ export function SessionThread({ messages }: { messages: SessionTranscriptMessage
           })}
         </article>
       ))}
+      {live ? (
+        <div className="chat-glimmer-line h-px w-full overflow-hidden bg-white/10" aria-hidden />
+      ) : null}
     </div>
   )
 }
