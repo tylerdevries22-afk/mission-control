@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import type { CliFleet, DashboardSession } from '@/lib/dashboard-cli-fleets'
 
 export interface DbStats {
   tasks: { total: number; byStatus: Record<string, number> }
@@ -38,27 +39,21 @@ export interface DashboardData {
   claudeStats: ClaudeStats | null
   githubStats: any
   loading: { system: boolean; sessions: boolean; claude: boolean; github: boolean }
-  sessions: any[]
+  sessions: DashboardSession[]
   logs: any[]
   agents: any[]
   tasks: any[]
   connection: { isConnected: boolean; url: string; reconnectAttempts: number; latency?: number; sseConnected?: boolean }
   subscription: { type: string; provider?: string; rateLimitTier?: string } | null
   navigateToPanel: (tab: string) => void
-  openSession: (session: any) => void
-  // Pre-computed values
+  openSession: (session: DashboardSession) => void
   memPct: number | null
   diskPct: number
   systemLoad: number
   activeSessions: number
   errorCount: number
   onlineAgents: number
-  claudeActive: number
-  codexActive: number
-  hermesActive: number
-  claudeLocalSessions: any[]
-  codexLocalSessions: any[]
-  hermesLocalSessions: any[]
+  cliFleets: CliFleet[]
   runningTasks: number
   inboxCount: number
   assignedCount: number
@@ -67,11 +62,7 @@ export interface DashboardData {
   backlogCount: number
   mergedRecentLogs: LogLike[]
   recentErrorLogs: number
-  // Health statuses
   localOsStatus: { value: string; status: 'good' | 'warn' | 'bad' }
-  claudeHealth: { value: string; status: 'good' | 'warn' | 'bad' }
-  codexHealth: { value: string; status: 'good' | 'warn' | 'bad' }
-  hermesHealth: { value: string; status: 'good' | 'warn' | 'bad' }
   mcHealth: { value: string; status: 'good' | 'warn' | 'bad' }
   gatewayHealthStatus: 'good' | 'bad'
   // Loading states

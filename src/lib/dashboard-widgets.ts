@@ -84,10 +84,10 @@ export const WIDGET_CATALOG: DashboardWidget[] = [
   {
     id: 'session-workbench',
     label: 'Session Workbench',
-    description: 'Live session list with activity indicators',
+    description: 'Every local and gateway CLI session, grouped by engine',
     category: 'sessions',
     modes: ['local', 'full'],
-    defaultSize: 'md',
+    defaultSize: 'full',
     component: 'SessionWorkbenchWidget',
   },
   {
@@ -148,6 +148,7 @@ export const WIDGET_CATALOG: DashboardWidget[] = [
 
 export const LOCAL_DEFAULT_LAYOUT = [
   'briefing-bar',
+  'session-workbench',
   'activity-timeline',
   'fleet-status',
   'task-pipeline',
@@ -157,6 +158,7 @@ export const LOCAL_DEFAULT_LAYOUT = [
 
 export const GATEWAY_DEFAULT_LAYOUT = [
   'briefing-bar',
+  'session-workbench',
   'activity-timeline',
   'fleet-status',
   'task-pipeline',
@@ -166,6 +168,27 @@ export const GATEWAY_DEFAULT_LAYOUT = [
 
 export function getDefaultLayout(mode: 'local' | 'full'): string[] {
   return mode === 'local' ? LOCAL_DEFAULT_LAYOUT : GATEWAY_DEFAULT_LAYOUT
+}
+
+const LEGACY_DEFAULT_LAYOUT = [
+  'briefing-bar',
+  'activity-timeline',
+  'fleet-status',
+  'task-pipeline',
+  'system-health',
+  'quick-actions',
+]
+
+export function resolveDashboardLayout(stored: string[] | null, mode: 'local' | 'full'): string[] {
+  const defaults = getDefaultLayout(mode)
+  if (!stored) return defaults
+  if (
+    stored.length === LEGACY_DEFAULT_LAYOUT.length
+    && stored.every((id, index) => id === LEGACY_DEFAULT_LAYOUT[index])
+  ) {
+    return defaults
+  }
+  return stored
 }
 
 export function getWidgetById(id: string): DashboardWidget | undefined {

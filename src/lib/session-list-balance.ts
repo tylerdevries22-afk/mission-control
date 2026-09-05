@@ -1,7 +1,16 @@
-import { TREE_KINDS } from './chat-session-identity'
+import { CLI_SESSION_KINDS } from './cli-session-kinds'
 
-const PER_TREE_KIND = 20
-const TOTAL_LIMIT = 120
+const PER_CLI_KIND = 40
+export const TOTAL_LIMIT = 120
+export const ABSOLUTE_LIMIT = 2000
+
+export function parseSessionLimit(raw: string | null): number {
+  if (raw == null || raw === '') return TOTAL_LIMIT
+  if (raw === 'all') return ABSOLUTE_LIMIT
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed < 1) return TOTAL_LIMIT
+  return Math.min(Math.floor(parsed), ABSOLUTE_LIMIT)
+}
 
 export function takeBalancedSessions(
   sessions: Array<Record<string, unknown>>,
@@ -13,8 +22,10 @@ export function takeBalancedSessions(
   const picked: Array<Record<string, unknown>> = []
   const seen = new Set<string>()
   const keyOf = (session: Record<string, unknown>) => `${session.source || ''}:${session.id || ''}`
+  const perKind = Math.max(1, Math.min(PER_CLI_KIND, Math.floor(limit / CLI_SESSION_KINDS.length) || 1))
 
-  for (const kind of TREE_KINDS) {
+  for (const kind of CLI_SESSION_KINDS) {
+    if (picked.length >= limit) break
     let count = 0
     for (const session of sorted) {
       if (session.kind !== kind) continue
@@ -23,7 +34,7 @@ export function takeBalancedSessions(
       picked.push(session)
       seen.add(key)
       count += 1
-      if (count >= PER_TREE_KIND) break
+      if (count >= perKind || picked.length >= limit) break
     }
   }
 
@@ -40,7 +51,10 @@ export function takeBalancedSessions(
   )
 }
 
-export function dedupeAndSortSessions(merged: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+export function dedupeAndSortSessions(
+  merged: Array<Record<string, unknown>>,
+  limit = TOTAL_LIMIT,
+): Array<Record<string, unknown>> {
   const deduped = new Map<string, Record<string, unknown>>()
   for (const session of merged) {
     const id = String(session?.id || '')
@@ -52,5 +66,5 @@ export function dedupeAndSortSessions(merged: Array<Record<string, unknown>>): A
     const existingActivity = Number(existing?.lastActivity || 0)
     if (!existing || currentActivity > existingActivity) deduped.set(key, session)
   }
-  return takeBalancedSessions(Array.from(deduped.values()))
+  return takeBalancedSessions(Array.from(deduped.values()), limit)
 }

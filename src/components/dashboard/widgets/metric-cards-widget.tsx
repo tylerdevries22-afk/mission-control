@@ -1,6 +1,6 @@
 'use client'
 
-import { EngineLogo } from '@/components/brand/engine-logo'
+import { SessionKindAvatar } from '@/components/chat/session-kind-brand'
 import {
   MetricCard,
   SessionIcon,
@@ -14,19 +14,23 @@ import {
   type DashboardData,
 } from '../widget-primitives'
 
+const FLEET_COLOR: Record<string, 'blue' | 'green' | 'purple' | 'red'> = {
+  'claude-code': 'blue',
+  'codex-cli': 'green',
+  grok: 'red',
+  kimi: 'purple',
+  hermes: 'purple',
+  opencode: 'purple',
+}
+
 export function MetricCardsWidget({ data }: { data: DashboardData }) {
   const {
     isLocal,
     isClaudeLoading,
     isSessionsLoading,
     isSystemLoading,
-    claudeActive,
-    codexActive,
-    hermesActive,
     claudeStats,
-    claudeLocalSessions,
-    codexLocalSessions,
-    hermesLocalSessions,
+    cliFleets,
     hermesCronJobCount,
     systemLoad,
     memPct,
@@ -44,33 +48,24 @@ export function MetricCardsWidget({ data }: { data: DashboardData }) {
     subscriptionPrice,
   } = data
 
-  if (isLocal) {
+  const cliCards = cliFleets.filter((fleet) => fleet.kind !== 'gateway' && (isLocal || fleet.total > 0))
+  if (isLocal || cliCards.length > 0) {
+    const hermes = cliFleets.find((fleet) => fleet.kind === 'hermes')
     return (
       <section className="grid grid-cols-2 xl:grid-cols-6 gap-3">
-        <MetricCard
-          label="Claude"
-          value={isClaudeLoading ? '...' : claudeActive}
-          total={isClaudeLoading ? undefined : (claudeStats?.total_sessions ?? claudeLocalSessions.length)}
-          subtitle="active sessions"
-          icon={<EngineLogo engine="claude" size={20} />}
-          color="blue"
-        />
-        <MetricCard
-          label="Codex"
-          value={isSessionsLoading ? '...' : codexActive}
-          total={isSessionsLoading ? undefined : codexLocalSessions.length}
-          subtitle="active sessions"
-          icon={<EngineLogo engine="codex" size={20} />}
-          color="green"
-        />
-        <MetricCard
-          label="Hermes"
-          value={isSessionsLoading ? '...' : hermesActive}
-          total={isSessionsLoading ? undefined : hermesLocalSessions.length}
-          subtitle={hermesCronJobCount > 0 ? `${hermesActive} active · ${hermesCronJobCount} cron` : 'active sessions'}
-          icon={<SessionIcon />}
-          color="purple"
-        />
+        {cliCards.map((fleet) => (
+          <MetricCard
+            key={fleet.kind}
+            label={fleet.label}
+            value={isSessionsLoading ? '...' : fleet.active}
+            total={isSessionsLoading ? undefined : fleet.total}
+            subtitle={fleet.kind === 'hermes' && hermesCronJobCount > 0
+              ? `${hermes?.active ?? 0} active · ${hermesCronJobCount} cron`
+              : 'active sessions'}
+            icon={<SessionKindAvatar kind={fleet.kind} fallback={fleet.label.slice(0, 2)} sizeClassName="w-5 h-5" />}
+            color={FLEET_COLOR[fleet.kind] || 'purple'}
+          />
+        ))}
         <MetricCard
           label="System Load"
           value={isSystemLoading ? '...' : `${systemLoad}%`}

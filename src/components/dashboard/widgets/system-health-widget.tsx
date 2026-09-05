@@ -10,9 +10,7 @@ export function SystemHealthWidget({ data }: { data: DashboardData }) {
     systemStats,
     isSystemLoading,
     localOsStatus,
-    claudeHealth,
-    codexHealth,
-    hermesHealth,
+    cliFleets,
     mcHealth,
     errorCount,
     connection,
@@ -82,9 +80,9 @@ export function SystemHealthWidget({ data }: { data: DashboardData }) {
           {isLocal ? (
             <>
               <HealthRow label="Local OS" value={localOsStatus.value} status={localOsStatus.status} />
-              <HealthRow label="Claude Runtime" value={claudeHealth.value} status={claudeHealth.status} />
-              <HealthRow label="Codex Runtime" value={codexHealth.value} status={codexHealth.status} />
-              <HealthRow label="Hermes Runtime" value={hermesHealth.value} status={hermesHealth.status} />
+              {cliFleets.filter((fleet) => fleet.kind !== 'gateway').map((fleet) => (
+                <HealthRow key={fleet.kind} label={`${fleet.label} Runtime`} value={fleet.health.value} status={fleet.health.status} />
+              ))}
               <HealthRow label="MC Core" value={mcHealth.value} status={mcHealth.status} />
             </>
           ) : (

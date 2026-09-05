@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger'
 import { denyUnscopedResourceForStrictWorkspace } from '@/lib/workspace-isolation'
 import { projectSlugOf } from '@/lib/chat-session-identity'
 import { collectLocalSessions, mapGatewaySessions } from '@/lib/session-list-merge'
-import { dedupeAndSortSessions } from '@/lib/session-list-balance'
+import { dedupeAndSortSessions, parseSessionLimit } from '@/lib/session-list-balance'
 import { scheduleSessionArchive } from '@/lib/session-archive-schedule'
 
 export async function GET(request: NextRequest) {
@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
     }
     const search = new URL(request.url).searchParams
     const project = search.get('project')?.trim().toLowerCase() || ''
-    let merged = dedupeAndSortSessions([...mappedGatewaySessions, ...localMerged])
+    const limit = parseSessionLimit(search.get('limit'))
+    let merged = dedupeAndSortSessions([...mappedGatewaySessions, ...localMerged], limit)
     if (search.get('include') === 'archived') {
       try {
         const { listArchivedSessions } = await import('@/lib/session-archive-index')

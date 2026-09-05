@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useMissionControl } from '@/store'
-import { WIDGET_CATALOG, getDefaultLayout, getAvailableWidgets, getWidgetById } from '@/lib/dashboard-widgets'
+import { WIDGET_CATALOG, getAvailableWidgets, getWidgetById, resolveDashboardLayout } from '@/lib/dashboard-widgets'
 import { Button } from '@/components/ui/button'
 import type { DashboardData } from './widget-primitives'
 
@@ -56,8 +56,7 @@ export function WidgetGrid({ data }: { data: DashboardData }) {
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const dragCounter = useRef(0)
 
-  const defaults = getDefaultLayout(mode)
-  const activeLayout = dashboardLayout ?? defaults
+  const activeLayout = resolveDashboardLayout(dashboardLayout, mode)
   const available = getAvailableWidgets(mode)
 
   // Filter layout to only include widgets valid for current mode
@@ -103,7 +102,7 @@ export function WidgetGrid({ data }: { data: DashboardData }) {
     if (!sourceId || sourceId === targetId) return
 
     setDashboardLayout((currentLayout) => {
-      const activeLayout = currentLayout ?? defaults
+      const activeLayout = resolveDashboardLayout(currentLayout, mode)
       const nextLayout = activeLayout.filter((id) => {
         const widget = getWidgetById(id)
         return !!widget && widget.modes.includes(mode)
@@ -133,7 +132,7 @@ export function WidgetGrid({ data }: { data: DashboardData }) {
 
   const addWidget = (widgetId: string) => {
     setDashboardLayout((currentLayout) => {
-      const activeLayout = currentLayout ?? defaults
+      const activeLayout = resolveDashboardLayout(currentLayout, mode)
       const nextLayout = activeLayout.filter((id) => {
         const widget = getWidgetById(id)
         return !!widget && widget.modes.includes(mode)
@@ -144,7 +143,7 @@ export function WidgetGrid({ data }: { data: DashboardData }) {
 
   const removeWidget = (widgetId: string) => {
     setDashboardLayout((currentLayout) => {
-      const activeLayout = currentLayout ?? defaults
+      const activeLayout = resolveDashboardLayout(currentLayout, mode)
       return activeLayout.filter((id) => id !== widgetId)
     })
   }
