@@ -8,6 +8,9 @@ describe('buildHandoffBrief', () => {
       sourceKind: 'claude-code',
       sourceId: 'sess-handoff-1',
       project: '/Users/dev/stillpoint-builders',
+      sourceAgent: 'claude-1',
+      targetAgent: 'codex',
+      window: 245400,
       messages: [
         { role: 'system', parts: [{ type: 'artifact', title: 'Franchise Readiness Register', url: 'https://claude.ai/code/artifact/abc' }] },
         { role: 'system', parts: [{ type: 'pr_link', number: 69, url: 'https://github.com/org/repo/pull/69', repo: 'org/repo' }] },
@@ -22,6 +25,8 @@ describe('buildHandoffBrief', () => {
     expect(prompt).not.toContain('sk-live-secret-token-value')
     expect(prompt).toContain('Dispatch nine bounded lanes')
     expect(prompt).toContain('stillpoint-builders')
+    expect(prompt).toContain('claude-1')
+    expect(prompt).toContain('Shared context window: 245400')
     expect(prompt.length).toBeLessThanOrEqual(HANDOFF_BRIEF_MAX)
   })
 })

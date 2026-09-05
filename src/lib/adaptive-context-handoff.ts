@@ -75,7 +75,7 @@ export async function pinAdaptiveContext(input: {
   title: string
   excerpt: string
 }): Promise<AdaptiveHandoffPin> {
-  const home = os.homedir()
+  const home = process.env.ADAPTIVE_CONTEXT_CONFIG_HOME || os.homedir()
   const policyPath = await resolveWorkspacePolicyPath(input.cwd, home)
   const ledgerFile = await writeLedger(policyPath, ledgerFromSession(input))
   const args = [
