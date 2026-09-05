@@ -11790,6 +11790,49 @@
         }
       }
     },
+    "/api/system-monitor/automations": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Mac cleanup automation status, live metrics, and thresholds",
+        "operationId": "getMacCleanupAutomations",
+        "responses": {
+          "200": {
+            "description": "Automation snapshot",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Monitoring"],
+        "summary": "Safely trigger a Mac cleanup automation",
+        "operationId": "triggerMacCleanupAutomation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "mode"],
+                "properties": {
+                  "id": { "type": "string", "enum": ["safe-reclaim", "resource-guardian", "storage-maintenance"] },
+                  "mode": { "type": "string", "enum": ["audit", "dry-run", "auto"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Trigger result" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
     "/api/system-monitor": {
       "get": {
         "tags": ["Monitoring"],

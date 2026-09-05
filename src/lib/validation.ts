@@ -317,6 +317,11 @@ export const installTmuxSchema = z.object({
   confirmation: z.literal('install_tmux'),
 }).strict()
 
+export const macCleanupTriggerSchema = z.object({
+  id: z.enum(['safe-reclaim', 'resource-guardian', 'storage-maintenance']),
+  mode: z.enum(['audit', 'dry-run', 'auto']),
+}).strict()
+
 export const releaseUpdateSchema = z.object({
   targetVersion: z.string().trim().min(1).max(128),
   confirmation: z.literal('update_mission_control'),
