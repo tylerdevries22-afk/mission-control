@@ -217,6 +217,7 @@ describe('direct session API coverage', () => {
       ['src/app/api/diagnostics/route.ts', 1],
       ['src/app/api/logs/route.ts', 2],
       ['src/app/api/system-monitor/route.ts', 1],
+      ['src/app/api/system-monitor/automations/route.ts', 2],
     ])
 
     for (const [file, operations] of expectedOperations) {

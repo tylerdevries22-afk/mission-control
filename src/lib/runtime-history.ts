@@ -1,5 +1,6 @@
 import { getDatabase } from '@/lib/db'
 import { scanCodexSessions } from '@/lib/codex-sessions'
+import { fleetAgentFromWorkspace } from '@/lib/fleet-agents'
 import { scanGrokSessions } from '@/lib/grok-sessions'
 import { scanKimiSessions } from '@/lib/kimi-sessions'
 import { logger } from '@/lib/logger'
@@ -29,9 +30,7 @@ function agentFor(sessionId: string, projectPath: string | null): string {
   if (sessionId.startsWith('grok:')) return 'grok'
   if (sessionId.startsWith('kimi:')) return 'kimi'
   if (sessionId.startsWith('codex:')) return 'codex'
-  if (projectPath?.includes('workspace-claude-20x')) return 'claude-20x'
-  if (projectPath?.includes('workspace-claude-5x')) return 'claude-5x'
-  return 'claude-20x'
+  return fleetAgentFromWorkspace(projectPath)
 }
 
 function epoch(value: string | null, fallback: number): number {
@@ -122,9 +121,13 @@ export function backfillTokenUsage(workspaceId = 1): { inserted: number } {
         WHEN s.session_id LIKE 'grok:%' THEN 'grok'
         WHEN s.session_id LIKE 'kimi:%' THEN 'kimi'
         WHEN s.session_id LIKE 'codex:%' THEN 'codex'
-        WHEN IFNULL(s.project_path, '') LIKE '%workspace-claude-20x%' THEN 'claude-20x'
-        WHEN IFNULL(s.project_path, '') LIKE '%workspace-claude-5x%' THEN 'claude-5x'
-        ELSE 'claude-20x'
+        WHEN IFNULL(s.project_path, '') LIKE '%workspace-claude-20x%'
+          OR IFNULL(s.project_path, '') LIKE '%workspace-claude-1%'
+          OR IFNULL(s.project_path, '') LIKE '%.claude-account1%' THEN 'claude-1'
+        WHEN IFNULL(s.project_path, '') LIKE '%workspace-claude-5x%'
+          OR IFNULL(s.project_path, '') LIKE '%workspace-claude-2%'
+          OR IFNULL(s.project_path, '') LIKE '%.claude-account2%' THEN 'claude-2'
+        ELSE 'claude-1'
       END
     FROM claude_sessions s
     WHERE NOT EXISTS (
