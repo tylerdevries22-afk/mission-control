@@ -217,6 +217,7 @@ describe('direct session API coverage', () => {
       ['src/app/api/diagnostics/route.ts', 1],
       ['src/app/api/logs/route.ts', 2],
       ['src/app/api/system-monitor/route.ts', 1],
+      ['src/app/api/system-monitor/automations/route.ts', 2],
     ])
 
     for (const [file, operations] of expectedOperations) {
@@ -301,7 +302,7 @@ describe('direct session API coverage', () => {
 
     expect(dispatch).toContain("WHERE workspace_id = ?\n        AND hidden = 0")
     expect(dispatch).toContain("WHERE t.status = 'review'\n      AND w.isolation = 'shared'")
-    expect(scheduler).toContain('SELECT id, name, status, last_seen, workspace_id FROM agents')
+    expect(scheduler).toContain('SELECT id, name, status, last_seen, workspace_id, runtime_type FROM agents')
     expect(scheduler).toContain("VALUES ('agent_status_change', 'agent', ?, 'heartbeat', ?, ?)")
     expect(scheduler).toContain("VALUES ('system', 'heartbeat', ?, ?, 'agent', ?, ?)")
   })

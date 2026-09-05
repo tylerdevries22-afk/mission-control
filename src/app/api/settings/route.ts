@@ -39,6 +39,7 @@ const settingDefinitions: Record<string, { category: string; description: string
   // General
   'general.site_name': { category: 'general', description: 'Mission Control display name', default: 'Mission Control' },
   'general.auto_cleanup': { category: 'general', description: 'Enable automatic data cleanup', default: 'false' },
+  'general.mac_cleanup_watch': { category: 'general', description: 'Trigger safe Mac cache/CPU reclaim while skipping projects with a live working directory', default: 'true' },
   'general.auto_backup': { category: 'general', description: 'Enable automatic daily backups', default: 'false' },
   'general.backup_retention_count': { category: 'general', description: 'Number of backup files to keep', default: '10' },
 
