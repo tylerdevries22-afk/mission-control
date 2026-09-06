@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useTranslations } from 'next-intl'
+import Image from 'next/image'
 import { APP_VERSION } from '@/lib/version'
 
 interface InitStep {
@@ -100,6 +101,9 @@ function PageLoader({ steps }: { steps?: InitStep[] }) {
   return (
     <div
       className="flex items-center justify-center min-h-screen bg-background void-bg"
+      role="status"
+      aria-live="polite"
+      aria-label={activeStep?.label || (allDone ? 'Mission Control ready' : 'Loading Mission Control')}
     >
       <div className="flex flex-col items-center gap-8 w-64">
         {/* Animated logo sequence: OpenClaw + Claude converge → morph into MC mark */}
@@ -115,7 +119,7 @@ function PageLoader({ steps }: { steps?: InitStep[] }) {
               {LOADER_AGENTS.map((agent) => (
                 <div key={agent.key} className={agent.wrapperClass}>
                   <div className="relative">
-                    <img
+                    <Image
                       src={agent.src}
                       alt={agent.name}
                       width={36}
@@ -135,7 +139,7 @@ function PageLoader({ steps }: { steps?: InitStep[] }) {
           {/* Phase 2: MC mark emerges (fades in at 2.0s) */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 animate-mc-fade-in">
             <div className="animate-float" style={{ animationDelay: '2.7s' }}>
-              <img
+              <Image
                 src="/brand/mc-logo-128.png"
                 alt="Mission Control"
                 width={56}
@@ -218,7 +222,7 @@ export function Loader({ variant = 'panel', label, steps }: LoaderProps) {
 
   if (variant === 'inline') {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" role="status" aria-live="polite">
         <LoaderDots size="sm" />
         {label && <span className="text-sm text-muted-foreground">{label}</span>}
       </div>
@@ -227,7 +231,7 @@ export function Loader({ variant = 'panel', label, steps }: LoaderProps) {
 
   // panel (default)
   return (
-    <div className="flex items-center justify-center py-12">
+    <div className="flex items-center justify-center py-12" role="status" aria-live="polite" aria-label={label || 'Loading'}>
       <div className="flex flex-col items-center gap-3">
         <LoaderDots />
         {label && <span className="text-sm text-muted-foreground">{label}</span>}

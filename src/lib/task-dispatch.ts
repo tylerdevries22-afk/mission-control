@@ -18,6 +18,8 @@ import { classifyModelProvider, getDispatchModelId, getModelByAlias } from './mo
 import { getMiniMaxApiKey, resolveMiniMaxEndpoint } from './minimax'
 import { claudeConfigDirForAgent } from './claude-config-dir'
 import { resolveGrokCliPath, resolveKimiCliPath, runGrokPrompt, runKimiPrompt } from './fleet-cli-dispatch'
+import { dispatchToFly } from './fly-orchestrator'
+import { fetchWithRetry } from './fetch-with-retry'
 import type Database from 'better-sqlite3'
 
 const AGENT_DISPATCH_ACCEPT_TIMEOUT_MS = 60_000
@@ -53,6 +55,7 @@ interface DispatchableTask {
   ticket_prefix: string | null
   project_ticket_no: number | null
   project_id: number | null
+  estimated_hours?: number | null
   tags?: string[]
   /** Raw tasks.metadata JSON — carries optional per-task sandbox overrides. */
   metadata?: string | null
@@ -525,7 +528,7 @@ export async function reconcileDeferredTaskCompletions(options: {
   const params: unknown[] = [workspaceId]
   let query = `
     SELECT t.id, t.title, t.assigned_to, t.metadata, t.workspace_id,
-           p.ticket_prefix, t.project_ticket_no
+           p.ticket_prefix, p.github_repo as project_repository, t.project_ticket_no
     FROM tasks t
     JOIN workspaces w ON w.id = t.workspace_id
     LEFT JOIN projects p ON p.id = t.project_id AND p.workspace_id = t.workspace_id
@@ -771,7 +774,7 @@ async function callClaudeDirectly(
 
   logger.info({ taskId: task.id, model, agent: task.agent_name }, 'Dispatching task via direct Claude API')
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -779,7 +782,7 @@ async function callClaudeDirectly(
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify(body),
-  })
+  }, { timeoutMs: 120_000 })
 
   if (!res.ok) {
     const errorBody = await res.text().catch(() => '')
@@ -1195,11 +1198,11 @@ async function callOpenAICompatible(
   logger.info({ taskId: task.id, model, agent: task.agent_name, provider: providerLabel },
     `Dispatching task via direct ${providerLabel} API`)
 
-  const res = await fetch(`${endpoint.replace(/\/$/, '')}/chat/completions`, {
+  const res = await fetchWithRetry(`${endpoint.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
-  })
+  }, { timeoutMs: 120_000 })
 
   if (!res.ok) {
     const errorBody = await res.text().catch(() => '')
@@ -1245,7 +1248,7 @@ async function callMiniMaxAnthropicCompatible(
     'Dispatching task via direct MiniMax API',
   )
 
-  const res = await fetch(endpoint.replace(/\/$/, '') + '/v1/messages', {
+  const res = await fetchWithRetry(endpoint.replace(/\/$/, '') + '/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1253,7 +1256,7 @@ async function callMiniMaxAnthropicCompatible(
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify(body),
-  })
+  }, { timeoutMs: 120_000 })
 
   if (!res.ok) {
     const errorBody = await res.text().catch(() => '')
@@ -1491,6 +1494,7 @@ export async function runAegisReviews(): Promise<{ ok: boolean; message: string 
     LEFT JOIN agents a ON a.name = t.assigned_to AND a.workspace_id = t.workspace_id
     WHERE t.status = 'review'
       AND w.isolation = 'shared'
+      AND NOT EXISTS (SELECT 1 FROM fly_submissions fs WHERE fs.task_id=t.id AND fs.workspace_id=t.workspace_id)
     ORDER BY t.updated_at ASC
     LIMIT 3
   `).all() as ReviewableTask[]
@@ -1675,6 +1679,7 @@ export async function requeueStaleTasks(): Promise<{ ok: boolean; message: strin
     LEFT JOIN agents a ON a.name = t.assigned_to AND a.workspace_id = t.workspace_id
     WHERE t.status = 'in_progress'
       AND t.updated_at < ?
+      AND NOT EXISTS (SELECT 1 FROM fly_submissions fs WHERE fs.task_id=t.id AND fs.workspace_id=t.workspace_id)
   `).all(staleThreshold) as Array<{
     id: number; title: string; assigned_to: string | null; dispatch_attempts: number
     workspace_id: number; agent_status: string | null; agent_last_seen: number | null
@@ -1756,7 +1761,7 @@ export async function dispatchAssignedTasks(): Promise<{ ok: boolean; message: s
   const tasks = db.prepare(`
     SELECT t.*, a.name as agent_name, a.id as agent_id, a.config as agent_config,
            a.runtime_type as agent_runtime_type,
-           p.ticket_prefix, t.project_ticket_no
+           p.ticket_prefix, p.github_repo as project_repository, t.project_ticket_no
     FROM tasks t
     JOIN agents a ON a.name = t.assigned_to AND a.workspace_id = t.workspace_id
     JOIN workspaces w ON w.id = t.workspace_id
@@ -1815,6 +1820,22 @@ export async function dispatchAssignedTasks(): Promise<{ ok: boolean; message: s
       { agent: task.agent_name, priority: task.priority },
       task.workspace_id
     )
+
+    const flyResult = await dispatchToFly(db, task)
+    if (flyResult.deferred) {
+      db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?')
+        .run('assigned', Math.floor(Date.now() / 1000), task.id, task.workspace_id)
+      eventBus.broadcast('task.status_changed', {
+        id: task.id, status: 'assigned', previous_status: 'in_progress', reason: flyResult.reason, workspace_id: task.workspace_id,
+      })
+      results.push({ id: task.id, success: true })
+      continue
+    }
+    if (flyResult.handled) {
+      db_helpers.logActivity('fly_worker_dispatched', 'task', task.id, 'scheduler', `Offloaded task to Fly: ${flyResult.reason}`, {}, task.workspace_id)
+      results.push({ id: task.id, success: true })
+      continue
+    }
 
     try {
       // Check for previous Aegis rejection feedback
@@ -2190,6 +2211,7 @@ export async function autoRouteInboxTasks(): Promise<{ ok: boolean; message: str
     SELECT id, title, description, priority, tags, workspace_id
     FROM tasks
     WHERE status = 'inbox' AND assigned_to IS NULL
+      AND NOT EXISTS (SELECT 1 FROM fly_submissions f WHERE f.task_id=tasks.id AND f.workspace_id=tasks.workspace_id)
     ORDER BY
       CASE priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END ASC,
       created_at ASC
