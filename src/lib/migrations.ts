@@ -6,6 +6,15 @@ import { renameClaudeFleetAgentRows } from './claude-fleet-rename'
 import { flyAdmissionMigration } from './fly-admission-migration'
 import { flyRepairMigration } from './fly-repair-migration'
 import { flyTopologyMigration } from './fly-topology-migration'
+import { jevMigration } from './jev-migration'
+import { desktopBrowserLoginMigration } from './desktop-browser-login-migration'
+import { jevAssistantMigration } from './jev-assistant-migration'
+import { jevCheckoutBindingMigration } from './jev-checkout-binding-migration'
+import { jevSetupSessionMigration } from './jev-setup-session-migration'
+import { jevCloudMigration } from './jev-cloud-migration'
+import { jevEvaluationLifecycleMigration } from './jev-evaluation-lifecycle-migration'
+import { jevSessionPrincipalMigration } from './jev-session-principal-migration'
+import { jevSetupUpgradeMigration } from './jev-setup-upgrade-migration'
 
 export type Migration = {
   id: string
@@ -1671,7 +1680,22 @@ export function runMigrations(db: Database.Database) {
     db.prepare('SELECT id FROM schema_migrations').all().map((row: any) => row.id)
   )
 
-  for (const migration of [...migrations, flyAdmissionMigration, flyRepairMigration, flyTopologyMigration, ...extraMigrations]) {
+  for (const migration of [
+    ...migrations,
+    flyAdmissionMigration,
+    flyRepairMigration,
+    flyTopologyMigration,
+    jevMigration,
+    desktopBrowserLoginMigration,
+    jevAssistantMigration,
+    jevCheckoutBindingMigration,
+    jevSetupSessionMigration,
+    jevCloudMigration,
+    jevEvaluationLifecycleMigration,
+    jevSessionPrincipalMigration,
+    jevSetupUpgradeMigration,
+    ...extraMigrations,
+  ]) {
     if (applied.has(migration.id)) continue
     const restoreForeignKeys = migration.foreignKeysOff
       && db.pragma('foreign_keys', { simple: true }) === 1
