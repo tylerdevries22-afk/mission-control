@@ -59,10 +59,11 @@ reap_previous_controller() {
   done
 
   local db="${MISSION_CONTROL_DATA_DIR:-}/mission-control.db"
-  local want want_real project_root pid cwd cwd_real exe base path
+  local want want_real project_root project_root_real pid cwd cwd_real exe base path
   want="$STANDALONE_DIR"
   want_real="$(cd "$STANDALONE_DIR" 2>/dev/null && pwd -P || printf '%s' "$STANDALONE_DIR")"
   project_root="${PROJECT_ROOT:-$(dirname "$(dirname "$want")")}"
+  project_root_real="$(cd "$project_root" 2>/dev/null && pwd -P || printf '%s' "$project_root")"
 
   # Include executable discovery because Node can rename its main thread on Linux.
   local cand_file
@@ -135,8 +136,8 @@ reap_previous_controller() {
       && "$cwd_real" != "$want" && "$cwd_real" != "$want_real"
       && "$cwd" != "$project_root"/.next-rollback-*/standalone
       && "$cwd" != "$project_root"/.data/releases/.next-rollback-*/standalone
-      && "$cwd_real" != "$project_root"/.next-rollback-*/standalone
-      && "$cwd_real" != "$project_root"/.data/releases/.next-rollback-*/standalone ]]; then
+      && "$cwd_real" != "$project_root_real"/.next-rollback-*/standalone
+      && "$cwd_real" != "$project_root_real"/.data/releases/.next-rollback-*/standalone ]]; then
       continue
     fi
     echo "reaping previous controller pid $pid" >&2
