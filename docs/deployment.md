@@ -67,12 +67,43 @@ BRANCH=fix/refactor PORT=3000 pnpm deploy:standalone
 ```
 
 What `deploy:standalone` does:
-- fetches and fast-forwards the requested branch
+- fetches and fast-forwards the requested branch from `origin`
 - reinstalls dependencies with the lockfile
 - rebuilds from a clean `.next/`
 - stops the old process bound to the target port
 - starts the standalone server through `scripts/start-standalone.sh`
 - verifies that the rendered login page references a CSS asset and that the CSS is served as `text/css`
+
+### Hosts supervised by launchd
+
+On macOS, when a launchd job with `KeepAlive` runs the server, the flow above
+fights it. It stops a server that launchd immediately restarts, deletes `.next/`
+out from under the running process, and starts a second server of its own. The
+script therefore switches to a launchd flow whenever
+`~/Library/LaunchAgents/$MC_LAUNCHD_LABEL.plist` exists. The label defaults to
+`com.tylerdevries.mission-control`, and `MC_LAUNCHD_PLIST` overrides the path.
+
+```bash
+pnpm deploy:standalone
+```
+
+In that flow the script:
+- stops before changing anything if the job is not loaded, if the plist's
+  `WorkingDirectory` is a different checkout, or if the branch has no upstream
+- deploys the checked-out branch, fast-forwarding it from the remote that the
+  branch tracks (`@{upstream}`) rather than `origin`
+- takes the port from the plist's `EnvironmentVariables.PORT`, ignoring `PORT`
+- moves the live `.next/` to `.data/releases/.next-rollback-<UTC>-<sha>`
+  instead of deleting it. The running server keeps working until the restart,
+  and `scripts/start-standalone.sh` reaps it from there.
+- restarts the job with `launchctl kickstart -k gui/<uid>/<label>` instead of
+  starting its own server
+- waits up to `VERIFY_TIMEOUT` seconds (default 180) for the listener on that
+  port to run from `.next/standalone`, then runs the same CSS checks
+- prints the exact rollback commands if the deploy fails after moving `.next/`
+
+Rollback snapshots are not pruned automatically. Set `MC_LAUNCHD_PLIST=` (empty)
+to force the nohup flow on a host that has the plist.
 
 ## Production (Docker)
 
