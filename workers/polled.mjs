@@ -3,6 +3,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { loadJob } from './job.mjs'
 import { createRunner } from './process.mjs'
+import { readTimeoutDiagnostics } from './timeout-diagnostics.mjs'
 import { createStateWriter } from './state.mjs'
 import { checkoutRepository, verifiedRevision } from './repository.mjs'
 import { setupRepository, verifyChecks } from './runtime.mjs'
@@ -31,7 +32,8 @@ export async function executeJob(job, dependencies = {}) {
     state = { ...state, state: 'succeeded', result_sha: resultSha,
       resolution: `${job.checks.join(', ')} passed at ${resultSha}; verification only, no branch pushed` }
   } catch (error) {
-    state = { ...state, state: 'failed', error_message: error instanceof Error ? error.message.slice(0, 500) : 'Worker failed' }
+    state = { ...state, state: 'failed', error_message: error instanceof Error ? error.message.slice(0, 500) : 'Worker failed',
+      timeout_diagnostics: readTimeoutDiagnostics(error) }
   } finally {
     clearInterval(heartbeat); clearTimeout(watchdog); run.stop?.()
     clearGitCredentials()

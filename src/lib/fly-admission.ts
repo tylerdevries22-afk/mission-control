@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3'
 import { eventBus } from './event-bus'
 import { flyReadiness, type FlySubmission } from './fly-admission-schema'
 import { priceFromFlyHistory } from './fly-sizing-history'
+import { readStoredTimeoutDiagnostics } from './fly-polled-result'
 
 export type SubmissionRow = {
   id: string; task_id: number; workspace_id: number; state: string; payload: string;
@@ -51,6 +52,7 @@ export function flySubmissionStatus(db: Database.Database, workspace: number, id
     created_at, completed_at, cleanup_completed_at, error_message FROM fly_worker_jobs
     WHERE workspace_id=? AND submission_id IN (SELECT id FROM fly_submissions
       WHERE workspace_id=? AND (? IS NULL OR id=?) AND (? IS NULL OR session_id=?) ORDER BY created_at DESC LIMIT 100)
-    ORDER BY created_at`).all(workspace,workspace,id || null,id || null,session,session) as Array<{submission_id:string}>
-  return rows.map(row => ({ ...row, safe_local_fallback: ['cancelled','expired'].includes(row.state), jobs: jobs.filter(job => job.submission_id === row.id) }))
+    ORDER BY created_at`).all(workspace,workspace,id || null,id || null,session,session) as Array<{ submission_id: string; id: string; branch_name: string; outcome_json: string | null }>
+  return rows.map(row => ({ ...row, safe_local_fallback: ['cancelled','expired'].includes(row.state), jobs: jobs.filter(job => job.submission_id === row.id)
+    .map(job => ({ ...job, timeout_diagnostics: readStoredTimeoutDiagnostics(job.outcome_json, job) })) }))
 }

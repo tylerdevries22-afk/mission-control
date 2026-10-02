@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3'
 import { z } from 'zod'
 import { eventBus } from './event-bus'
 import type { ReservedJob } from './fly-reservations'
+import { timeoutDiagnosticsSchema } from './fly-timeout-diagnostics'
 
 export const polledResultSchema = z.object({
   job_id: z.string(), state: z.enum(['running','succeeded','failed']),
@@ -10,12 +11,14 @@ export const polledResultSchema = z.object({
   updated_at: z.number().int(), resolution: z.string().max(10000).nullish(),
   error_message: z.string().max(5000).nullish(), branch_name: z.string(),
   result_sha: z.string().regex(/^[a-f0-9]{40}$/).nullish(),
+  timeout_diagnostics: timeoutDiagnosticsSchema.nullish(),
 })
 
 function parseResult(text: string, job: Pick<ReservedJob, 'id' | 'branch_name'>, requireFresh: boolean) {
   if (Buffer.byteLength(text) > 20000) throw new Error('Worker result exceeds limit')
   const result = polledResultSchema.parse(JSON.parse(text))
   if (result.job_id !== job.id || result.branch_name !== job.branch_name) throw new Error('Worker result identity mismatch')
+  if (result.timeout_diagnostics && (result.state !== 'failed' || result.result_sha)) throw new Error('Timeout diagnostics require a failed unverified result')
   if (result.state === 'succeeded' && !result.result_sha) throw new Error('Successful result requires a verified revision')
   const now = Math.floor(Date.now()/1000)
   if (result.updated_at > now+30 || (requireFresh && result.state === 'running' && result.updated_at < now-90)) throw new Error('Worker state timestamp is stale or invalid')
@@ -24,6 +27,12 @@ function parseResult(text: string, job: Pick<ReservedJob, 'id' | 'branch_name'>,
 
 export function readPolledResult(text: string, job: Pick<ReservedJob, 'id' | 'branch_name'>) {
   return parseResult(text, job, true)
+}
+
+/** Legacy results and invalid advisory fields do not gain timeout evidence. */
+export function readStoredTimeoutDiagnostics(text: string | null, job: Pick<ReservedJob, 'id' | 'branch_name'>) {
+  if (!text) return null
+  try { return parseResult(text, job, false).timeout_diagnostics ?? null } catch { return null }
 }
 
 export function recordPolledResult(db: Database.Database, job: ReservedJob, text: string) {
