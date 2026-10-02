@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import { packageFailure } from './command-error.mjs'
+import { packageTimeout } from './timeout-diagnostics.mjs'
 
 export function cleanEnvironment(env = process.env) {
   const selected = Object.fromEntries(['PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL', 'PLAYWRIGHT_BROWSERS_PATH']
@@ -36,7 +37,7 @@ export function createRunner(deadline, defaults = {}) {
         // A package script may leave descendants after its own process exits.
         // They cannot outlive the bounded command group on a disposable worker.
         terminate(child)
-        if (timedOut) reject(new Error(`${options.label || command} exceeded the job deadline`))
+        if (timedOut || Date.now() >= deadline) reject(packageTimeout(options.label || command, diagnostic))
         else if (code !== 0) reject(packageFailure(options.label || command, code, diagnostic))
         else resolve(output.trim())
       })
