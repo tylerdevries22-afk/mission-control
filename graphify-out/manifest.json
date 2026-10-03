@@ -834,9 +834,9 @@
     "semantic_hash": ""
   },
   "src/app/api/auth/users/route.ts": {
-    "mtime": 1790989472.132067,
-    "seen": 1790990118.973768,
-    "ast_hash": "65d4a78bd11673afedca3d2e533b5d67",
+    "mtime": 1790993248.4358454,
+    "seen": 1790993274.816041,
+    "ast_hash": "904cd19207ee6e2a7c75412c31935195",
     "semantic_hash": ""
   },
   "src/app/api/backup/route.ts": {
@@ -4710,10 +4710,10 @@
     "semantic_hash": "3328529e2ea2b6d9a0090297158d323b"
   },
   "src/lib/chat-session-metrics.ts": {
-    "mtime": 1790987766.0223992,
-    "seen": 1790990118.974062,
-    "ast_hash": "db67573f493ccda0d6aec1454df1cff1",
-    "semantic_hash": "db67573f493ccda0d6aec1454df1cff1"
+    "mtime": 1790992967.263767,
+    "seen": 1790993274.816382,
+    "ast_hash": "331ecb660f38b48e7352df9f89dd03a2",
+    "semantic_hash": ""
   },
   "src/lib/chat-settings-kv.ts": {
     "mtime": 1790987766.0224485,
@@ -6366,10 +6366,10 @@
     "semantic_hash": ""
   },
   "tests/delete-body.spec.ts": {
-    "mtime": 1790987766.0433261,
-    "seen": 1790990118.9741912,
-    "ast_hash": "08277688cc1c5eee3a25d2a19dd8e776",
-    "semantic_hash": "08277688cc1c5eee3a25d2a19dd8e776"
+    "mtime": 1790993265.7224035,
+    "seen": 1790993274.816533,
+    "ast_hash": "0c39a146c6d6f62863a88d5951bed723",
+    "semantic_hash": ""
   },
   "tests/device-identity.spec.ts": {
     "mtime": 1790987766.0433905,
@@ -6504,9 +6504,9 @@
     "semantic_hash": "6f14747636c7537892df6060c0737c13"
   },
   "tests/login-flow.spec.ts": {
-    "mtime": 1790991603.7971418,
-    "seen": 1790991898.967445,
-    "ast_hash": "cdfd74620387cff32eec92045a0632ce",
+    "mtime": 1790993248.4500182,
+    "seen": 1790993274.816544,
+    "ast_hash": "b12fdecdac8df4aaf955b83989d82e9c",
     "semantic_hash": ""
   },
   "tests/mcp-server.spec.ts": {
@@ -6660,10 +6660,10 @@
     "semantic_hash": "59b8e0c050fd2a367f527b44c2aa2d15"
   },
   "tests/user-management.spec.ts": {
-    "mtime": 1790987766.0467625,
-    "seen": 1790990118.97421,
-    "ast_hash": "a6c2d0f65e1c49a689b2040e40c84ced",
-    "semantic_hash": "a6c2d0f65e1c49a689b2040e40c84ced"
+    "mtime": 1790993248.4935167,
+    "seen": 1790993274.816554,
+    "ast_hash": "62db80babd7957e7c8458c5d0b740f0f",
+    "semantic_hash": ""
   },
   "tests/webhooks-crud.spec.ts": {
     "mtime": 1790987766.046818,
@@ -8118,9 +8118,9 @@
     "semantic_hash": ""
   },
   "tests/jev-setup-flow.spec.ts": {
-    "mtime": 1790987766.0451097,
-    "seen": 1790990118.974198,
-    "ast_hash": "5316e2523d225301d168dfb2575f3d3a",
+    "mtime": 1790993248.464141,
+    "seen": 1790993274.816541,
+    "ast_hash": "61e4de464965f0a2370115f9d1b2ca2a",
     "semantic_hash": ""
   },
   "docs/jev-workspace-prd.md": {
@@ -8526,9 +8526,9 @@
     "semantic_hash": ""
   },
   "tests/jev-sorter-flow.spec.ts": {
-    "mtime": 1790987766.0451808,
-    "seen": 1790990118.974199,
-    "ast_hash": "dd41b7fdc67227b444ffdb863c76e1dd",
+    "mtime": 1790993248.478801,
+    "seen": 1790993274.816542,
+    "ast_hash": "71ba44cf42fa6a5593966037a2b041d0",
     "semantic_hash": ""
   },
   "docs/jev-sorter-workspace.md": {
@@ -8895,6 +8895,12 @@
     "mtime": 1790992110.1710489,
     "seen": 1790992321.67535,
     "ast_hash": "2c3e52928ddf68525f944dd619f0f2c1",
+    "semantic_hash": ""
+  },
+  "src/lib/__tests__/chat-session-metrics-boundary.test.ts": {
+    "mtime": 1790992967.2800603,
+    "seen": 1790993274.8162339,
+    "ast_hash": "67ca23c3db5dd24b561313aa0622734a",
     "semantic_hash": ""
   }
 }
