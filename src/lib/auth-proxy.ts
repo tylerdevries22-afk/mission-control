@@ -4,6 +4,7 @@ import { createUser } from './auth-users'
 import { getDefaultWorkspaceContext, resolveTenantForWorkspace } from './auth-context'
 import { logSecurityEvent } from './security-events'
 import { extractClientIpFromTrusted } from './request'
+import { safeCompare } from './auth-keys'
 import type { User, UserQueryRow } from './auth-types'
 
 // Trusted IPs for proxy auth header (comma-separated)
@@ -23,7 +24,7 @@ function warnProxyAuthMisconfigOnce(): void {
       severity: 'critical',
       source: 'auth',
       detail: JSON.stringify({
-        reason: 'MC_PROXY_AUTH_HEADER is set but MC_PROXY_AUTH_TRUSTED_IPS is empty — proxy auth disabled',
+        reason: 'Proxy auth requires trusted IPs and MC_PROXY_AUTH_SECRET with at least 32 characters; otherwise it is disabled',
       }),
       workspace_id: 1,
       tenant_id: 1,
@@ -80,9 +81,14 @@ function resolveOrProvisionProxyUser(username: string): User | null {
 export function resolveProxyUser(request: Request, agentName: string | null): User | null {
   const proxyAuthHeader = (process.env.MC_PROXY_AUTH_HEADER || '').trim()
   if (proxyAuthHeader) {
-    if (PROXY_AUTH_TRUSTED_IPS.size === 0) {
+    const secret = process.env.MC_PROXY_AUTH_SECRET || ''
+    if (PROXY_AUTH_TRUSTED_IPS.size === 0 || secret.length < 32) {
       warnProxyAuthMisconfigOnce()
     } else {
+      // Forwarded IPs alone cannot authenticate the peer in an App Router Request.
+      // The proxy must overwrite this header with an environment-held secret.
+      const presentedSecret = request.headers.get('x-mc-proxy-secret') || ''
+      if (!safeCompare(presentedSecret, secret)) return null
       const clientIp = extractClientIpFromTrusted(request, PROXY_AUTH_TRUSTED_IPS, '')
       if (clientIp && PROXY_AUTH_TRUSTED_IPS.has(clientIp)) {
         const proxyUsername = (request.headers.get(proxyAuthHeader) || '').trim()

@@ -15,8 +15,8 @@ export function getUserFromRequest(request: Request): User | null {
   // When the gateway has already authenticated the user and injects their username
   // as a trusted header (e.g. X-Auth-Username from Envoy OIDC claimToHeaders),
   // skip the local login form entirely.
-  // Requires MC_PROXY_AUTH_TRUSTED_IPS — without it, proxy auth is disabled
-  // and a critical security event is logged on the first request.
+  // Requires trusted IPs and an environment-held proxy secret; missing configuration
+  // disables proxy auth and records a critical security event once.
   const proxyUser = resolveProxyUser(request, agentName)
   if (proxyUser) return proxyUser
 
