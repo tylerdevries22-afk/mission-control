@@ -146,9 +146,13 @@ export function parseOpenClawDoctorOutput(
       !isInformationalDoctorLine(line)
     )
 
+  const hasFindings = issues.length > 0
+  if (!hasFindings && exitCode !== 0) {
+    issues.push('OpenClaw doctor could not complete. Check the runtime logs and try again.')
+  }
   const findingText = issues.join('\n')
   let level: OpenClawDoctorLevel = 'healthy'
-  if (issues.length > 0 && (exitCode !== 0 || /invalid config/i.test(findingText))) {
+  if (exitCode !== 0 || /invalid config/i.test(findingText)) {
     level = 'error'
   } else if (issues.length > 0) {
     level = 'warning'
@@ -168,7 +172,7 @@ export function parseOpenClawDoctorOutput(
         ) ||
         'OpenClaw doctor reported configuration issues.'
 
-  const canFix = level !== 'healthy'
+  const canFix = hasFindings && level !== 'healthy'
 
   return {
     level,
