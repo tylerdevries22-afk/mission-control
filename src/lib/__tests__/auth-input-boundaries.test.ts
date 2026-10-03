@@ -3,20 +3,23 @@ import { NextRequest } from 'next/server'
 
 const fixture = vi.hoisted(() => ({
   authenticate: vi.fn(), getUser: vi.fn(), update: vi.fn(), session: vi.fn(),
-  audit: vi.fn(), password: vi.fn(), storedUser: vi.fn(),
+  audit: vi.fn(), password: vi.fn(), storedUser: vi.fn(), deletion: vi.fn(),
 }))
 vi.mock('@/lib/auth', () => ({
   authenticateUser: fixture.authenticate, getUserFromRequest: fixture.getUser,
   updateUser: fixture.update, createSession: fixture.session, requireRole: vi.fn(),
+  deleteUser: fixture.deletion, getUserById: vi.fn(), getAllUsers: vi.fn(), createUser: vi.fn(),
 }))
 vi.mock('@/lib/db', () => ({ logAuditEvent: fixture.audit, needsFirstTimeSetup: () => false,
   getDatabase: () => ({ prepare: () => ({ get: fixture.storedUser }) }) }))
 vi.mock('@/lib/password', () => ({ verifyPassword: fixture.password }))
-vi.mock('@/lib/rate-limit', () => ({ loginLimiter: () => null, passwordChangeLimiter: () => null }))
+vi.mock('@/lib/rate-limit', () => ({ loginLimiter: () => null, passwordChangeLimiter: () => null,
+  identitySecurityMutationLimiter: () => null }))
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn() } }))
 
 import { POST } from '@/app/api/auth/login/route'
 import { PATCH } from '@/app/api/auth/me/route'
+import { DELETE } from '@/app/api/auth/users/route'
 
 const user = { id: 1, username: 'user', display_name: 'User', role: 'viewer', workspace_id: 2, tenant_id: 4 }
 function request(path: string, body: unknown, method: string) {
@@ -35,6 +38,15 @@ beforeEach(() => {
 })
 
 describe('credential HTTP boundaries', () => {
+  it.each([undefined, '', '{'])('preserves the DELETE parse-error contract for empty or malformed transport: %s', async body => {
+    fixture.getUser.mockReturnValue({ ...user, role: 'admin' })
+    const response = await DELETE(new NextRequest('http://localhost/api/auth/users', { method: 'DELETE', body }))
+    expect(response.status).toBe(400)
+    expect((await response.json()).error).toContain('body required')
+    expect(fixture.deletion).not.toHaveBeenCalled()
+    expect(fixture.audit).not.toHaveBeenCalled()
+  })
+
   it.each([null, [], {}, { username: {}, password: 'value' }, { username: 'user', password: 123 },
     { username: 'a'.repeat(101), password: 'value' }, { username: 'user', password: 'a'.repeat(1025) }])(
     'rejects malformed login input before hashing or auditing: %o', async body => {
