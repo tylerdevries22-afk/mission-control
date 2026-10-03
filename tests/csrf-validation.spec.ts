@@ -35,6 +35,17 @@ test.describe('CSRF Origin Validation (Issue #20)', () => {
     expect(res.status()).not.toBe(403)
   })
 
+  for (const origin of ['http://127.0.0.1:9999', 'null', 'invalid-origin']) {
+    test(`POST rejects unsafe origin ${origin}`, async ({ request }) => {
+      const res = await request.post('/api/auth/login', {
+        data: { username: 'unused', password: 'unused' },
+        headers: { origin },
+      })
+      expect(res.status()).toBe(403)
+      expect((await res.json()).error).toContain('CSRF')
+    })
+  }
+
   test('POST without Origin header is allowed (non-browser client)', async ({ request }) => {
     const res = await request.post('/api/auth/login', {
       data: { username: TEST_USER, password: TEST_PASS },
