@@ -72,6 +72,10 @@ describe('shared websocket transport', () => {
     ws.message({ type: 'res', id: socketState.connectId, ok: true, result: { policy: { tickIntervalMs: 1000 } } })
     await vi.advanceTimersByTimeAsync(5000)
     expect(ws.close).toHaveBeenCalledWith(4000, 'Heartbeat timeout')
+    expect(socketState.handshakeComplete).toBe(false)
+    // A zero-delay reconnect runs on the next event-loop turn, after the deadline.
+    await vi.advanceTimersByTimeAsync(1)
+    expect(FakeSocket.instances).toHaveLength(2)
     expect(FakeSocket.instances[1].url).toBe('ws://127.0.0.1:18789')
   })
 
