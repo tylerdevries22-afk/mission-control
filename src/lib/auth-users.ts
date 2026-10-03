@@ -119,6 +119,10 @@ export function createUser(
 
 export function updateUser(id: number, updates: { display_name?: string; role?: User['role']; password?: string; email?: string | null; avatar_url?: string | null; is_approved?: 0 | 1 }): User | null {
   const db = getDatabase()
+  if (updates.password !== undefined && (typeof updates.password !== 'string'
+    || updates.password.length < 12 || updates.password.length > 1024)) {
+    throw new Error('Password must contain 12 to 1024 characters')
+  }
   const fields: string[] = []
   const params: Array<string | number | null> = []
 
@@ -135,7 +139,12 @@ export function updateUser(id: number, updates: { display_name?: string; role?: 
   params.push(Math.floor(Date.now() / 1000))
   params.push(id)
 
-  db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).run(...params)
+  db.transaction(() => {
+    const result = db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).run(...params)
+    if (result.changes > 0 && (updates.password !== undefined || updates.is_approved === 0)) {
+      destroyAllUserSessions(id)
+    }
+  })()
   return getUserById(id)
 }
 
