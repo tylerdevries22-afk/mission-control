@@ -1,6 +1,8 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import type { JevAssistantDraft } from '../src/lib/jev-assistant-schema'
 
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '192.0.2.22' } })
+
 const projects = [
   { id: 101, name: 'Mission Control', slug: 'mission-control', ticket_prefix: 'MC', status: 'active', github_repo: 'example/mission-control' },
   { id: 102, name: 'Example API', slug: 'example-api', ticket_prefix: 'API', status: 'active', github_repo: 'example/api' },

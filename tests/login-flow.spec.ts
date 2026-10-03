@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test'
 
+// Isolate this suite's real login attempts while retaining the critical limiter.
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '192.0.2.21' } })
+
 /**
  * E2E smoke test — Login flow and session auth
  * Verifies the basic login/session/logout lifecycle works end-to-end.

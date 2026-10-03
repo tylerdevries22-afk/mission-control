@@ -148,6 +148,9 @@ export async function DELETE(request: NextRequest) {
   const rateCheck = identitySecurityMutationLimiter(`${currentUser.tenant_id ?? 1}:${currentUser.workspace_id ?? 1}:${currentUser.id}:users`)
   if (rateCheck) return rateCheck
 
+  if (!request.body) {
+    return NextResponse.json({ error: 'JSON body required with user id' }, { status: 400 })
+  }
   const validated = await validateBody(request, deleteAuthUserSchema)
   if ('error' in validated) return validated.error
   const userId = validated.data.id
