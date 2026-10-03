@@ -366,9 +366,9 @@
     "semantic_hash": "51dc4902eac22cba8339318b7b45080e"
   },
   "package.json": {
-    "mtime": 1790990267.1980941,
-    "seen": 1790990283.4829671,
-    "ast_hash": "dfa1317e33326a22817a0d3cc3c377a9",
+    "mtime": 1790991296.9235358,
+    "seen": 1790991367.173771,
+    "ast_hash": "4e207ca221f57aae2dc2f75f469a914b",
     "semantic_hash": ""
   },
   "playwright.config.ts": {
@@ -4812,10 +4812,10 @@
     "semantic_hash": "08f6dfe3baee43d76702e36c8fbdaae9"
   },
   "src/lib/client-logger.ts": {
-    "mtime": 1790987766.0232444,
-    "seen": 1790990118.9740689,
-    "ast_hash": "9078964c5a2511abcc9f80624c175bc7",
-    "semantic_hash": "9078964c5a2511abcc9f80624c175bc7"
+    "mtime": 1790991023.8995247,
+    "seen": 1790991367.174141,
+    "ast_hash": "62cb9128c9e02b97630674830c5632d7",
+    "semantic_hash": ""
   },
   "src/lib/codex-sessions.ts": {
     "mtime": 1790987766.0233033,
@@ -7422,9 +7422,9 @@
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
-    "mtime": 1790987765.9328015,
-    "seen": 1790990118.974248,
-    "ast_hash": "711989a94401b432b11117fa69b7018f",
+    "mtime": 1790991296.9390972,
+    "seen": 1790991367.174342,
+    "ast_hash": "f740348468203bfdd8e52e328c592c2b",
     "semantic_hash": ""
   },
   "public/llms.txt": {
@@ -8778,9 +8778,9 @@
     "semantic_hash": ""
   },
   "src/lib/websocket-transport.ts": {
-    "mtime": 1790989826.6631773,
-    "seen": 1790990118.974176,
-    "ast_hash": "e6278aede35bf79b657ea2a8b8b102bb",
+    "mtime": 1790990989.3304977,
+    "seen": 1790991367.174263,
+    "ast_hash": "5e54b4ddc791aa404998a4214dfbacc0",
     "semantic_hash": ""
   },
   "src/lib/websocket-value.ts": {
@@ -8817,6 +8817,24 @@
     "mtime": 1790990197.7813272,
     "seen": 1790990283.483511,
     "ast_hash": "86a8682ddb540bd30089f5e08bd91884",
+    "semantic_hash": ""
+  },
+  "scripts/security/braces-depth.test.cjs": {
+    "mtime": 1790991296.9792836,
+    "seen": 1790991367.173792,
+    "ast_hash": "5f5a39459695ccb019b7d9b5df34470d",
+    "semantic_hash": ""
+  },
+  "src/lib/__tests__/client-logger.test.ts": {
+    "mtime": 1790991023.9125578,
+    "seen": 1790991367.174,
+    "ast_hash": "1c1bb429e92456d133fedc0216af4f05",
+    "semantic_hash": ""
+  },
+  "docs/security/audit-dependency-notes.md": {
+    "mtime": 1790991297.0158975,
+    "seen": 1790991367.174339,
+    "ast_hash": "1e1c412c494f117cbcfc24bf947ce92e",
     "semantic_hash": ""
   }
 }
