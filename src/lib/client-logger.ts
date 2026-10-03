@@ -22,17 +22,19 @@ function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= minLevel
 }
 
+function safeLogValue(value: unknown): unknown {
+  // Keep untrusted text within one record when consoles are captured as line logs.
+  return typeof value === 'string' ? value.replace(/\n|\r/g, ' ') : value
+}
+
 function formatArgs(
   level: LogLevel,
   module: string,
   msgOrObj: unknown,
   ...rest: unknown[]
 ): unknown[] {
-  const prefix = `[${level.toUpperCase()}] ${module}:`
-  if (typeof msgOrObj === 'string') {
-    return [prefix, msgOrObj, ...rest]
-  }
-  return [prefix, msgOrObj, ...rest]
+  const prefix = `[${level.toUpperCase()}] ${module.replace(/\n|\r/g, ' ')}:`
+  return [prefix, safeLogValue(msgOrObj), ...rest.map(safeLogValue)]
 }
 
 export interface ClientLogger {
