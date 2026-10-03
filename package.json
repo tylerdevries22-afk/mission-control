@@ -19,7 +19,7 @@
     "start": "pnpm run verify:node && next start --hostname 127.0.0.1 --port ${PORT:-3000}",
     "start:standalone": "pnpm run verify:node && bash scripts/start-standalone.sh",
     "deploy:standalone": "pnpm run verify:node && bash scripts/deploy-standalone.sh",
-    "lint": "pnpm run verify:node && eslint .",
+    "lint": "pnpm run verify:node && eslint . --max-warnings 0",
     "typecheck": "pnpm run verify:node && NODE_OPTIONS=--max-old-space-size=4096 tsc --noEmit",
     "test": "pnpm run verify:node && node --test scripts/e2e-openclaw/stage-standalone-assets.test.mjs && node scripts/run-tests-with-diagnostics.mjs --coverage",
     "test:coverage": "pnpm test",
