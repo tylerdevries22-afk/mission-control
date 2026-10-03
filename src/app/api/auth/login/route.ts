@@ -4,17 +4,17 @@ import { logAuditEvent, needsFirstTimeSetup } from '@/lib/db'
 import { getMcSessionCookieName, getMcSessionCookieOptions, isRequestSecure } from '@/lib/session-cookie'
 import { loginLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
+import { loginCredentialsSchema } from '@/lib/auth-user-validation'
+import { validateBody } from '@/lib/validation'
 
 export async function POST(request: Request) {
   try {
     const rateCheck = loginLimiter(request)
     if (rateCheck) return rateCheck
 
-    const { username, password } = await request.json()
-
-    if (!username || !password) {
-      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 })
-    }
+    const validated = await validateBody(request, loginCredentialsSchema)
+    if ('error' in validated) return validated.error
+    const { username, password } = validated.data
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     const userAgent = request.headers.get('user-agent') || undefined

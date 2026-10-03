@@ -17,3 +17,16 @@ export const updateAuthUserSchema = z.object({
 }).strict()
 
 export const deleteAuthUserSchema = z.object({ id: userId }).strict()
+
+export const loginCredentialsSchema = z.object({
+  username: z.string().min(1).max(100),
+  password: z.string().min(1).max(1024),
+})
+
+export const updateOwnProfileSchema = z.object({
+  current_password: z.string().min(1).max(1024).optional(),
+  new_password: optionalPassword,
+  display_name: z.string().trim().min(1).max(200).optional(),
+}).strict().refine(value => !value.new_password || Boolean(value.current_password), {
+  message: 'Current password is required', path: ['current_password'],
+})

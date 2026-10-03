@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest, updateUser, requireRole, destroyAllUserSessions, createSession } from '@/lib/auth'
+import { getUserFromRequest, updateUser, requireRole, createSession } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/db'
 import { verifyPassword } from '@/lib/password'
 import { getMcSessionCookieName, getMcSessionCookieOptions, isRequestSecure } from '@/lib/session-cookie'
 import { passwordChangeLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
+import { updateOwnProfileSchema } from '@/lib/auth-user-validation'
+import { validateBody } from '@/lib/validation'
 
 export async function GET(request: Request) {
   const auth = requireRole(request, 'viewer')
@@ -47,7 +49,9 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const { current_password, new_password, display_name } = await request.json()
+    const validated = await validateBody(request, updateOwnProfileSchema)
+    if ('error' in validated) return validated.error
+    const { current_password, new_password, display_name } = validated.data
 
     const updates: { password?: string; display_name?: string } = {}
 
@@ -61,14 +65,10 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'Current password is required' }, { status: 400 })
       }
 
-      if (new_password.length < 12) {
-        return NextResponse.json({ error: 'New password must be at least 12 characters' }, { status: 400 })
-      }
-
       // Verify current password by fetching stored hash
       const { getDatabase } = await import('@/lib/db')
       const db = getDatabase()
-      const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any
+      const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as { password_hash: string } | undefined
       if (!row || !verifyPassword(current_password, row.password_hash)) {
         return NextResponse.json({ error: 'Current password is incorrect' }, { status: 403 })
       }
@@ -97,8 +97,7 @@ export async function PATCH(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || undefined
     if (updates.password) {
       logAuditEvent({ action: 'password_change', actor: user.username, actor_id: user.id, ip_address: ipAddress })
-      // Revoke all existing sessions and issue a fresh one for this request
-      destroyAllUserSessions(user.id)
+      // updateUser revoked existing sessions atomically with the password update.
     }
     if (updates.display_name) {
       logAuditEvent({ action: 'profile_update', actor: user.username, actor_id: user.id, detail: { display_name: updates.display_name }, ip_address: ipAddress })
