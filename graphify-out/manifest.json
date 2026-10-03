@@ -1680,9 +1680,9 @@
     "semantic_hash": "d75036dfaeea2da02f5b279d6ee0aaf6"
   },
   "src/app/login/page.tsx": {
-    "mtime": 1790991572.6739826,
-    "seen": 1790991898.967009,
-    "ast_hash": "d8774a88bddca76ce09539e1b831f9d0",
+    "mtime": 1790992473.33218,
+    "seen": 1790992483.843839,
+    "ast_hash": "2ec9d96da0f82f7287aa9a2e2a928d88",
     "semantic_hash": ""
   },
   "src/app/setup/page.tsx": {
@@ -4812,9 +4812,9 @@
     "semantic_hash": "08f6dfe3baee43d76702e36c8fbdaae9"
   },
   "src/lib/client-logger.ts": {
-    "mtime": 1790992246.505688,
-    "seen": 1790992321.675155,
-    "ast_hash": "a8d8cbe7f333994bc9d798972e8bd295",
+    "mtime": 1790992604.257486,
+    "seen": 1790992630.25381,
+    "ast_hash": "a2cb8f1aa9fd96acf74c510a47061d16",
     "semantic_hash": ""
   },
   "src/lib/codex-sessions.ts": {
@@ -8856,9 +8856,9 @@
     "semantic_hash": ""
   },
   "src/components/auth/login-notices.tsx": {
-    "mtime": 1790991545.6951027,
-    "seen": 1790991898.9670138,
-    "ast_hash": "25cb9a5f50aae14cea2f2e73fe524ff4",
+    "mtime": 1790992473.3503113,
+    "seen": 1790992483.8438451,
+    "ast_hash": "7b60b8ecb8372910e4665ddca6dd0d0e",
     "semantic_hash": ""
   },
   "src/components/auth/use-login-gateway.ts": {
