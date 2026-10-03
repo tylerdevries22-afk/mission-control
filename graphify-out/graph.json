@@ -37882,7 +37882,7 @@
       "file_type": "code",
       "norm_label": "request()",
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L22"
+      "source_location": "L25"
     },
     {
       "id": "src_lib_tests_auth_test_makerequest",
@@ -80555,7 +80555,7 @@
       "file_type": "code",
       "norm_label": "user",
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L21"
+      "source_location": "L24"
     },
     {
       "id": "src_lib_tests_auth_session_approval_test",
@@ -98189,31 +98189,7 @@
     },
     {
       "source": "src_app_api_auth_users_route_delete",
-      "target": "src_lib_validation_validatebody",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/app/api/auth/users/route.ts",
-      "source_location": "L154",
-      "weight": 1.0
-    },
-    {
-      "source": "src_app_api_auth_users_route_delete",
       "target": "src_lib_auth_users_getuserbyid",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/app/api/auth/users/route.ts",
-      "source_location": "L164",
-      "weight": 1.0
-    },
-    {
-      "source": "src_app_api_auth_users_route_delete",
-      "target": "src_lib_auth_users_deleteuser",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -98225,6 +98201,18 @@
     },
     {
       "source": "src_app_api_auth_users_route_delete",
+      "target": "src_lib_auth_users_deleteuser",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/app/api/auth/users/route.ts",
+      "source_location": "L174",
+      "weight": 1.0
+    },
+    {
+      "source": "src_app_api_auth_users_route_delete",
       "target": "src_lib_db_logauditevent",
       "relation": "calls",
       "_origin": "ast",
@@ -98232,7 +98220,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/app/api/auth/users/route.ts",
-      "source_location": "L175",
+      "source_location": "L180",
       "weight": 1.0
     },
     {
@@ -148548,7 +148536,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L22",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -196145,7 +196133,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L18",
+      "source_location": "L20",
       "weight": 1.0
     },
     {
@@ -196157,7 +196145,19 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L19",
+      "source_location": "L21",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_tests_auth_input_boundaries_test",
+      "target": "src_app_api_auth_users_route_delete",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -251577,6 +251577,18 @@
     },
     {
       "source": "src_lib_tests_auth_input_boundaries_test",
+      "target": "ref_next",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_tests_auth_input_boundaries_test",
       "target": "src_app_api_auth_login_route",
       "relation": "imports_from",
       "_origin": "ast",
@@ -251584,7 +251596,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L18",
+      "source_location": "L20",
       "weight": 1.0
     },
     {
@@ -251596,19 +251608,19 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L19",
+      "source_location": "L21",
       "weight": 1.0
     },
     {
       "source": "src_lib_tests_auth_input_boundaries_test",
-      "target": "ref_next",
+      "target": "src_app_api_auth_users_route",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L2",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -324169,7 +324181,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/__tests__/auth-input-boundaries.test.ts",
-      "source_location": "L21",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -336238,5 +336250,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "90ee8db5b442253965a5adc2b8ea00ce664fac6b"
+  "built_at_commit": "bd5bc117fbd6556763003b8048b9af427b3d761f"
 }

@@ -1,17 +1,17 @@
 # Graph Report - studio-openclaw-audit  (2026-10-02)
 
 ## Corpus Check
-- 1404 files · ~1,021,756 words
+- 1404 files · ~1,021,834 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 19 file(s) not represented in the graph (top: (none) 12, .css 2, .example 1)
 
 ## Summary
-- 7665 nodes · 20932 edges · 342 communities (304 shown, 38 thin omitted)
+- 7665 nodes · 20933 edges · 342 communities (304 shown, 38 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 216 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `90ee8db5`
+- Built from commit: `bd5bc117`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
