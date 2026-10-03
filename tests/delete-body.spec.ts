@@ -68,6 +68,7 @@ test.describe('DELETE Body Standardization (Issue #18)', () => {
     })
     const body = await res.json()
     expect(body.error).toContain('body required')
+    expect(res.status()).toBe(400)
   })
 
   test('old query param style no longer works for DELETE', async ({ request }) => {

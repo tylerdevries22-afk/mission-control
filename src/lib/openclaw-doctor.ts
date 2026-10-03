@@ -1,4 +1,5 @@
-import path from 'node:path'
+import { collectDoctorBullets } from '@/lib/openclaw-doctor-lines'
+import { stripForeignStateDirectoryWarning } from '@/lib/openclaw-doctor-state'
 import { isDoctorTitleLine, isInformationalDoctorLine, stripDoctorGutter } from '@/lib/openclaw-doctor-info'
 
 export type OpenClawDoctorLevel = 'healthy' | 'warning' | 'error'
@@ -41,72 +42,6 @@ function isStateDirectoryListLine(line: string): boolean {
   return /^(?:\$OPENCLAW_HOME(?:\/\.openclaw)?|~\/\.openclaw|\/\S+)$/.test(line)
 }
 
-function normalizeFsPath(candidate: string): string {
-  return path.resolve(candidate.trim())
-}
-
-function normalizeDisplayedPath(candidate: string, stateDir: string): string {
-  const trimmed = candidate.trim()
-  if (!trimmed) return trimmed
-  if (trimmed === '~/.openclaw') return stateDir
-  if (trimmed === '$OPENCLAW_HOME' || trimmed === '$OPENCLAW_HOME/.openclaw') return stateDir
-  return trimmed
-}
-
-function stripForeignStateDirectoryWarning(rawOutput: string, stateDir?: string): string {
-  if (!stateDir) return rawOutput
-
-  const normalizedStateDir = normalizeFsPath(stateDir)
-  const lines = rawOutput.split(/\r?\n/)
-  const kept: string[] = []
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? ''
-    const normalized = normalizeLine(line)
-
-    if (!/multiple state directories detected/i.test(normalized)) {
-      kept.push(line)
-      continue
-    }
-
-    const blockLines = [line]
-    let cursor = index + 1
-    while (cursor < lines.length) {
-      const nextLine = lines[cursor] ?? ''
-      const nextNormalized = normalizeLine(nextLine)
-      if (!nextNormalized) {
-        blockLines.push(nextLine)
-        cursor += 1
-        continue
-      }
-      if (/^(active state dir:|[-*]\s+(?:\/|~\/|\$OPENCLAW_HOME)|\|)/i.test(nextNormalized)) {
-        blockLines.push(nextLine)
-        cursor += 1
-        continue
-      }
-      break
-    }
-
-    const listedDirs = blockLines
-      .map(normalizeLine)
-      .filter(entry => /^[-*]\s+/.test(entry))
-      .map(entry => entry.replace(/^[-*]\s+/, '').trim())
-      .filter(Boolean)
-      .map(entry => normalizeDisplayedPath(entry, normalizedStateDir))
-
-    const foreignDirs = listedDirs.filter(entry => normalizeFsPath(entry) !== normalizedStateDir)
-    const onlyForeignDirs = foreignDirs.length > 0
-
-    if (!onlyForeignDirs) {
-      kept.push(...blockLines)
-    }
-
-    index = cursor - 1
-  }
-
-  return kept.join('\n')
-}
-
 function detectCategory(raw: string, issues: string[]): OpenClawDoctorCategory {
   const haystack = `${raw}\n${issues.join('\n')}`.toLowerCase()
 
@@ -114,7 +49,7 @@ function detectCategory(raw: string, issues: string[]): OpenClawDoctorCategory {
     return 'config'
   }
 
-  if (/state integrity|orphan transcript|multiple state directories|session history/.test(haystack)) {
+  if (/state integrity|orphan transcript|multiple state directories|session history|legacy session bindings/.test(haystack)) {
     return 'state'
   }
 
@@ -136,9 +71,7 @@ export function parseOpenClawDoctorOutput(
     .map(normalizeLine)
     .filter(Boolean)
 
-  const issues = lines
-    .filter(line => /^[-*]\s+/.test(line))
-    .map(line => line.replace(/^[-*]\s+/, '').trim())
+  const issues = collectDoctorBullets(raw)
     .filter(line =>
       !isSessionAgingLine(line) &&
       !isStateDirectoryListLine(line) &&
@@ -146,9 +79,13 @@ export function parseOpenClawDoctorOutput(
       !isInformationalDoctorLine(line)
     )
 
+  const hasFindings = issues.length > 0
+  if (!hasFindings && exitCode !== 0) {
+    issues.push('OpenClaw doctor could not complete. Check the runtime logs and try again.')
+  }
   const findingText = issues.join('\n')
   let level: OpenClawDoctorLevel = 'healthy'
-  if (issues.length > 0 && (exitCode !== 0 || /invalid config/i.test(findingText))) {
+  if (exitCode !== 0 || /invalid config/i.test(findingText)) {
     level = 'error'
   } else if (issues.length > 0) {
     level = 'warning'
@@ -168,7 +105,7 @@ export function parseOpenClawDoctorOutput(
         ) ||
         'OpenClaw doctor reported configuration issues.'
 
-  const canFix = level !== 'healthy'
+  const canFix = hasFindings && level !== 'healthy'
 
   return {
     level,

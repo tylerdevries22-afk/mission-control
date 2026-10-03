@@ -4,6 +4,7 @@ import { logAuditEvent } from '@/lib/db'
 import { validateBody, createUserSchema } from '@/lib/validation'
 import { identitySecurityMutationLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
+import { deleteAuthUserSchema, updateAuthUserSchema } from '@/lib/auth-user-validation'
 
 /**
  * GET /api/auth/users - List all users (admin only)
@@ -67,8 +68,8 @@ export async function POST(request: NextRequest) {
         tenant_id: newUser.tenant_id ?? 1,
       }
     }, { status: 201 })
-  } catch (error: any) {
-    if (error.message?.includes('UNIQUE constraint failed')) {
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
       return NextResponse.json({ error: 'Username already exists' }, { status: 409 })
     }
     logger.error({ err: error }, 'POST /api/auth/users error')
@@ -89,16 +90,9 @@ export async function PUT(request: NextRequest) {
   if (rateCheck) return rateCheck
 
   try {
-    const { id, display_name, role, password, is_approved, email, avatar_url } = await request.json()
-    const userId = parseInt(String(id))
-
-    if (!id || Number.isNaN(userId)) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
-    }
-
-    if (role && !['admin', 'operator', 'viewer'].includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
-    }
+    const validated = await validateBody(request, updateAuthUserSchema)
+    if ('error' in validated) return validated.error
+    const { id: userId, display_name, role, password, is_approved, email, avatar_url } = validated.data
 
     // Prevent demoting yourself
     if (userId === currentUser.id && role && role !== currentUser.role) {
@@ -154,15 +148,17 @@ export async function DELETE(request: NextRequest) {
   const rateCheck = identitySecurityMutationLimiter(`${currentUser.tenant_id ?? 1}:${currentUser.workspace_id ?? 1}:${currentUser.id}:users`)
   if (rateCheck) return rateCheck
 
-  let body: any
-  try { body = await request.json() } catch { return NextResponse.json({ error: 'Request body required' }, { status: 400 }) }
-  const id = body.id
-
-  if (!id) {
-    return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'JSON body required with user id' }, { status: 400 })
   }
-
-  const userId = parseInt(id)
+  const validated = deleteAuthUserSchema.safeParse(body)
+  if (!validated.success) return NextResponse.json({ error: 'Validation failed',
+    details: validated.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`),
+  }, { status: 400 })
+  const userId = validated.data.id
 
   // Prevent deleting yourself
   if (userId === currentUser.id) {

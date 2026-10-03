@@ -3,6 +3,8 @@ import { expect, test, type Page, type APIRequestContext } from '@playwright/tes
 import { sorterEvaluation, sorterPolicy } from '../src/components/panels/jev/jev-sorter.fixtures'
 import type { JevEvaluation } from '../src/lib/jev-types'
 
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '192.0.2.23' } })
+
 let sessionState: Awaited<ReturnType<APIRequestContext['storageState']>>
 test.beforeAll(async ({ request }) => {
   // Screen-size checks share one real login; do not weaken the critical login limiter.

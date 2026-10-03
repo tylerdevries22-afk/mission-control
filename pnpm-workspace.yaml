@@ -10,19 +10,29 @@ onlyBuiltDependencies:
   - sharp
   - unrs-resolver
 
+patchedDependencies:
+  braces@3.0.3: patches/braces@3.0.3.patch
+
 minimumReleaseAge: 10080
 # Security hotfixes younger than the 7-day gate; remove entries once they age out.
 minimumReleaseAgeExclude:
   - electron@44.2.0 # Replace legacy Electron 38 with the supported security-patched desktop runtime.
-  - next@16.2.11 # 9 advisories incl. SSRF + middleware bypass (published 2026-07-21)
   - '@next/*' # env/swc/eslint siblings; versions are exact-pinned by next itself
-  - brace-expansion@5.0.8 # GHSA-mh99-v99m-4gvg DoS (published 2026-07-23)
 
 overrides:
-  postcss@8: '>=8.5.18 <9'
-  sharp: '>=0.35.0 <0.36.0'
-  brace-expansion@1: '>=1.1.16 <2'
-  brace-expansion@2: '>=2.1.2 <3'
-  brace-expansion@5: '>=5.0.8 <6'
+  # Compatible security floors from the October 2026 OSV audit.
+  postcss@8: '>=8.5.23 <9'
+  sharp: '>=0.35.4 <0.36.0'
+  brace-expansion@1: '>=1.1.21 <2'
+  brace-expansion@2: '>=2.1.7 <3'
+  brace-expansion@5: '>=5.0.12 <6'
+  '@ai-sdk/provider-utils@4': '>=4.0.33 <5'
+  baseline-browser-mapping@2: '>=2.11.0 <3'
+  browserslist@4: '>=4.28.7 <5'
+  fflate@0.6: '>=0.6.11 <0.7'
+  js-yaml@3: '>=3.15.2 <4'
+  js-yaml@4: '>=4.3.2 <5'
+  nanoid@3: '>=3.3.18 <4'
+  undici@7: '>=7.29.1 <8'
   ts-deepmerge: '>=8.0.0'
   eslint-plugin-react-hooks: ~7.0.1

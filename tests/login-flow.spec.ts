@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test'
 
+// Isolate this suite's real login attempts while retaining the critical limiter.
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '192.0.2.21' } })
+
 /**
  * E2E smoke test — Login flow and session auth
  * Verifies the basic login/session/logout lifecycle works end-to-end.
@@ -34,6 +37,18 @@ test.describe('Login Flow', () => {
   test('unauthenticated access redirects to login', async ({ page }) => {
     await page.goto('/')
     await expect(page).toHaveURL(/\/login/)
+  })
+
+  test('successful login rejects a backslash external destination', async ({ page }) => {
+    await page.goto('/login?next=' + encodeURIComponent('/\\evil.invalid'))
+    const origin = new URL(page.url()).origin
+    await page.locator('#username').fill(TEST_USER)
+    await page.locator('#password').fill(TEST_PASS)
+    await page.locator('form button[type="submit"]').click()
+    await expect(page).toHaveURL(origin + '/')
+    const me = await page.request.get('/api/auth/me')
+    expect(me.status()).toBe(200)
+    expect((await me.json()).user.username).toBe(TEST_USER)
   })
 
   test('login API returns session cookie on success', async ({ request }) => {

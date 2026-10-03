@@ -2,6 +2,7 @@ export function isInformationalDoctorLine(line: string): boolean {
   return /^personal codex cli assets found/i.test(line) ||
     /^to review or promote them:/i.test(line) ||
     /^system browser profile cookie import is /i.test(line) ||
+    /^system browser profile discovery skipped by doctor\b/i.test(line) ||
     /^importable chrome-family profile cookie databases found/i.test(line) ||
     /^doctor does not access the macos keychain/i.test(line) ||
     /^oauth dir not present \(.*\)\. skipping create/i.test(line) ||

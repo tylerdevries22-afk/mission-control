@@ -3,6 +3,19 @@ import { API_KEY_HEADER, createTestUser, deleteTestUser } from './helpers'
 
 test.describe('User Management', () => {
   const cleanup: number[] = []
+  let loginSequence = 0
+
+  test.beforeEach(async ({ request }) => {
+    // Exercise the real admin identity instead of sharing the global-key quota.
+    const login = await request.post('/api/auth/login', {
+      headers: { 'x-forwarded-for': `192.0.2.${100 + ++loginSequence}` },
+      data: {
+        username: process.env.E2E_AUTH_USER || 'testadmin',
+        password: process.env.E2E_AUTH_PASS || 'testpass1234!',
+      },
+    })
+    expect(login.status()).toBe(200)
+  })
 
   test.afterEach(async ({ request }) => {
     for (const id of cleanup) {

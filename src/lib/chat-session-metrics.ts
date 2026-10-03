@@ -10,8 +10,10 @@ export type SessionTokenMetrics = {
 }
 
 const ZERO_METRICS: SessionTokenMetrics = { used: 0, window: 0, percent: 0, label: '0' }
+const MAX_METRIC_TEXT_LENGTH = 256
 
 export function parseTokenCount(raw: string): number {
+  if (raw.length > MAX_METRIC_TEXT_LENGTH) return 0
   const match = raw.trim().toLowerCase().replace(/,/g, '').match(/^(\d+(?:\.\d+)?)([kmb])?$/)
   if (!match) return 0
   const value = Number(match[1])
@@ -23,7 +25,7 @@ export function parseTokenCount(raw: string): number {
 }
 
 export function parseSessionTokens(tokens: string | undefined): SessionTokenMetrics {
-  if (!tokens?.trim()) return ZERO_METRICS
+  if (!tokens || tokens.length > MAX_METRIC_TEXT_LENGTH || !tokens.trim()) return ZERO_METRICS
   const explicit = readExplicitPercent(tokens)
   const parts = splitTokenParts(tokens)
   if (parts.length === 0) return ZERO_METRICS
@@ -61,7 +63,7 @@ export function formatDuration(ms: number): string {
 }
 
 export function contextPercent(tokens?: string, model?: string): number | null {
-  if (!tokens?.trim()) return null
+  if (!tokens || tokens.length > MAX_METRIC_TEXT_LENGTH || !tokens.trim()) return null
   const parsed = parseSessionTokens(tokens)
   const explicit = readExplicitPercent(tokens)
   if (explicit != null) return explicit
@@ -73,7 +75,10 @@ export function contextPercent(tokens?: string, model?: string): number | null {
 }
 
 function splitTokenParts(tokens: string): string[] {
-  return tokens.replace(/\(.*\)/, '').split('/').map((part) => part.trim()).filter(Boolean)
+  const start = tokens.indexOf('(')
+  const end = tokens.lastIndexOf(')')
+  const counts = start >= 0 && end > start ? tokens.slice(0, start) + tokens.slice(end + 1) : tokens
+  return counts.split('/').map((part) => part.trim()).filter(Boolean)
 }
 
 function isInOutPair(left: number, right: number, hasPercent: boolean): boolean {
