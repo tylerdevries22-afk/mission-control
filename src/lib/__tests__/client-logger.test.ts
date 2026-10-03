@@ -13,7 +13,7 @@ describe('client logger', () => {
     const output = vi.spyOn(console, level).mockImplementation(() => {})
     const { createClientLogger } = await import('../client-logger')
     createClientLogger('module\r\nforged')[level]('message\nforged', 'detail\rforged')
-    expect(output).toHaveBeenCalledWith(`[${level.toUpperCase()}] module  forged:`, 'message forged', 'detail forged')
+    expect(output).toHaveBeenCalledWith(`[${level.toUpperCase()}] module  forged: message forged detail forged`)
   })
 
   it('preserves structured fields and sanitizes the accompanying message', async () => {
@@ -21,8 +21,9 @@ describe('client logger', () => {
     const { createClientLogger } = await import('../client-logger')
     const context = { status: 503, operation: 'gateway' }
     createClientLogger('gateway').warn(context, 'retry\r\nlater')
-    expect(output).toHaveBeenCalledWith('[WARN] gateway:', JSON.stringify(context), 'retry  later')
-    expect(JSON.parse(output.mock.calls[0][1])).toEqual(context)
+    expect(output).toHaveBeenCalledWith(`[WARN] gateway: ${JSON.stringify(context)} retry  later`)
+    const rendered = String(output.mock.calls[0][0]).slice('[WARN] gateway: '.length).split(' retry')[0]
+    expect(JSON.parse(rendered)).toEqual(context)
   })
 
   it('redacts credential fields in structured context without modifying input', async () => {
@@ -30,7 +31,7 @@ describe('client logger', () => {
     const { createClientLogger } = await import('../client-logger')
     const context = { status: 403, token: 'private-token', nested: { password: 'private-password' } }
     createClientLogger('gateway').error(context, 'denied')
-    const rendered = String(output.mock.calls[0][1])
+    const rendered = String(output.mock.calls[0][0]).slice('[ERROR] gateway: '.length).replace(/ denied$/, '')
     expect(JSON.parse(rendered)).toEqual({ status: 403, token: '[redacted]', nested: { password: '[redacted]' } })
     expect(context.token).toBe('private-token')
     expect(context.nested.password).toBe('private-password')
@@ -42,11 +43,11 @@ describe('client logger', () => {
     const cycle: Record<string, unknown> = {}
     cycle.self = cycle
     createClientLogger('gateway').warn(new Error('line\nforged'))
-    const rendered = String(output.mock.calls[0][1])
+    const rendered = String(output.mock.calls[0][0]).slice('[WARN] gateway: '.length)
     expect(rendered).not.toMatch(/[\r\n]/)
     expect(JSON.parse(rendered).message).toBe('line\nforged')
     createClientLogger('gateway').warn(cycle)
-    expect(output.mock.calls[1][1]).toBe('[unserializable context]')
+    expect(output.mock.calls[1][0]).toBe('[WARN] gateway: [unserializable context]')
   })
 
   it('suppresses production debug and info while keeping warnings and errors', async () => {
