@@ -4812,9 +4812,9 @@
     "semantic_hash": "08f6dfe3baee43d76702e36c8fbdaae9"
   },
   "src/lib/client-logger.ts": {
-    "mtime": 1790991718.198874,
-    "seen": 1790991898.967289,
-    "ast_hash": "47c08db51c7f0df0cc665421ce77199f",
+    "mtime": 1790992246.505688,
+    "seen": 1790992321.675155,
+    "ast_hash": "a8d8cbe7f333994bc9d798972e8bd295",
     "semantic_hash": ""
   },
   "src/lib/codex-sessions.ts": {
@@ -8658,15 +8658,15 @@
     "semantic_hash": ""
   },
   "src/lib/auth-proxy.ts": {
-    "mtime": 1790988764.319635,
-    "seen": 1790990118.9740539,
-    "ast_hash": "859f9d897539949134e8993dae58b641",
+    "mtime": 1790992110.1089885,
+    "seen": 1790992321.675141,
+    "ast_hash": "c67adac6a09a7578c7d2a1c73a90474a",
     "semantic_hash": ""
   },
   "src/lib/auth-request.ts": {
-    "mtime": 1790988764.3192475,
-    "seen": 1790990118.9740539,
-    "ast_hash": "1259bb4452ec53ca0a5fb03388706375",
+    "mtime": 1790992110.124734,
+    "seen": 1790992321.6751418,
+    "ast_hash": "d25c96291063901aeecb0555f8542771",
     "semantic_hash": ""
   },
   "src/lib/auth-sessions.ts": {
@@ -8826,9 +8826,9 @@
     "semantic_hash": ""
   },
   "src/lib/__tests__/client-logger.test.ts": {
-    "mtime": 1790991718.2160017,
-    "seen": 1790991898.967144,
-    "ast_hash": "5705420e3db72b26260196efcd10986c",
+    "mtime": 1790992246.5241497,
+    "seen": 1790992321.675015,
+    "ast_hash": "54713d57888314f5684f50c864bcac34",
     "semantic_hash": ""
   },
   "docs/security/audit-dependency-notes.md": {
@@ -8883,6 +8883,18 @@
     "mtime": 1790991545.61995,
     "seen": 1790991898.967345,
     "ast_hash": "0a6bc3637219f7ddfb49641d3d51816e",
+    "semantic_hash": ""
+  },
+  "src/lib/__tests__/auth-proxy-boundary.test.ts": {
+    "mtime": 1790992110.1556253,
+    "seen": 1790992321.6750028,
+    "ast_hash": "d87d872ab0f44b62aa88e19ad13f4e78",
+    "semantic_hash": ""
+  },
+  "docs/security/proxy-auth.md": {
+    "mtime": 1790992110.1710489,
+    "seen": 1790992321.67535,
+    "ast_hash": "2c3e52928ddf68525f944dd619f0f2c1",
     "semantic_hash": ""
   }
 }
