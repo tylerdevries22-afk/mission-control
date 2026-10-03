@@ -51,7 +51,7 @@ export function validateSession(token: string): (User & { sessionId: number }) |
     WHERE s.token = ? AND s.expires_at > ?
   `).get(tokenHash, now) as SessionQueryRow | undefined
 
-  if (!row) return null
+  if (!row || (row.is_approved ?? 1) !== 1) return null
 
   return {
     id: row.id,
