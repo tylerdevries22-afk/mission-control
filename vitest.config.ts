@@ -15,13 +15,12 @@ export default defineConfig(async () => {
       include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
       coverage: {
         provider: 'v8' as const,
+        reporter: ['text-summary', 'json-summary'],
         include: ['src/lib/**/*.ts'],
         exclude: [
           'src/lib/__tests__/**',
           'src/**/*.test.ts',
           // Server-side orchestration files requiring live DB/process context
-          'src/lib/websocket.ts',
-          'src/lib/websocket-utils.ts',
           'src/lib/super-admin.ts',
           'src/lib/task-dispatch.ts',
           'src/lib/security-scan.ts',
@@ -66,11 +65,9 @@ export default defineConfig(async () => {
           'src/lib/agent-card-helpers.ts',
           'src/lib/chat-utils.ts',
           // Additional server-side files requiring live runtime context
-          'src/lib/auth.ts',
           'src/lib/webhooks.ts',
           'src/lib/memory-utils.ts',
           'src/lib/gateway-runtime.ts',
-          'src/lib/device-identity.ts',
           'src/lib/utils.ts',
           'src/lib/version.ts',
           'src/lib/plugin-loader.ts',
