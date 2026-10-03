@@ -47,8 +47,7 @@ export function LoginNotices({ pendingApproval, needsSetup, error, onRetry }: Pr
             <Button
               onClick={() => {
                 // A document reload is required to leave the authenticated app shell.
-                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                window.location.href = '/setup'
+                window.location.href = new URL('/setup', window.location.origin).href
               }}
               size="sm"
               className="mt-3"
