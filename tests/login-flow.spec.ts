@@ -36,6 +36,18 @@ test.describe('Login Flow', () => {
     await expect(page).toHaveURL(/\/login/)
   })
 
+  test('successful login rejects a backslash external destination', async ({ page }) => {
+    await page.goto('/login?next=' + encodeURIComponent('/\\evil.invalid'))
+    const origin = new URL(page.url()).origin
+    await page.locator('#username').fill(TEST_USER)
+    await page.locator('#password').fill(TEST_PASS)
+    await page.locator('form button[type="submit"]').click()
+    await expect(page).toHaveURL(origin + '/')
+    const me = await page.request.get('/api/auth/me')
+    expect(me.status()).toBe(200)
+    expect((await me.json()).user.username).toBe(TEST_USER)
+  })
+
   test('login API returns session cookie on success', async ({ request }) => {
     const res = await request.post('/api/auth/login', {
       data: { username: TEST_USER, password: TEST_PASS },
