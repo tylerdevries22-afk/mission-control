@@ -61,22 +61,23 @@ export interface ClientLogger {
 }
 
 export function createClientLogger(module: string): ClientLogger {
+  // The sink also removes record separators if the upstream formatter ever changes.
   return {
     debug(msgOrObj: unknown, ...rest: unknown[]) {
       if (!shouldLog('debug')) return
-      console.debug(formatArgs('debug', module, msgOrObj, ...rest).join(' ').replace(/\n|\r/g, ' '))
+      console.debug(formatArgs('debug', module, msgOrObj, ...rest).join(' ').replace(/\n|\r/g, ''))
     },
     info(msgOrObj: unknown, ...rest: unknown[]) {
       if (!shouldLog('info')) return
-      console.info(formatArgs('info', module, msgOrObj, ...rest).join(' ').replace(/\n|\r/g, ' '))
+      console.info(formatArgs('info', module, msgOrObj, ...rest).join(' ').replace(/\n|\r/g, ''))
     },
     warn(msgOrObj: unknown, ...rest: unknown[]) {
       if (!shouldLog('warn')) return
-      console.warn(formatArgs('warn', module, msgOrObj, ...rest).join(' ').replace(/\n|\r/g, ' '))
+      console.warn(formatArgs('warn', module, msgOrObj, ...rest).join(' ').replace(/\n|\r/g, ''))
     },
     error(msgOrObj: unknown, ...rest: unknown[]) {
       if (!shouldLog('error')) return
-      console.error(formatArgs('error', module, msgOrObj, ...rest).join(' ').replace(/\n|\r/g, ' '))
+      console.error(formatArgs('error', module, msgOrObj, ...rest).join(' ').replace(/\n|\r/g, ''))
     },
   }
 }
