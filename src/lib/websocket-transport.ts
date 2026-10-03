@@ -15,7 +15,7 @@ function clearReconnectTimer() {
 }
 
 export function connectGateway(url: string, token?: string) {
-  if (socketState.ws && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socketState.ws.readyState)) return
+  if (socketState.ws?.readyState === WebSocket.OPEN || socketState.ws?.readyState === WebSocket.CONNECTING) return
   clearReconnectTimer()
   clearHandshakeTimers()
   socketHeartbeat.stop()
