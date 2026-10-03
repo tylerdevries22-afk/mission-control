@@ -22,9 +22,21 @@ function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= minLevel
 }
 
-function safeLogValue(value: unknown): unknown {
-  // Keep untrusted text within one record when consoles are captured as line logs.
-  return typeof value === 'string' ? value.replace(/\n|\r/g, ' ') : value
+function safeLogValue(value: unknown): string {
+  // Serialize structured context too: custom objects must not bypass line boundaries.
+  let formatted: string
+  if (typeof value === 'string') formatted = value
+  else {
+    try {
+      const context = value instanceof Error ? { name: value.name, message: value.message, stack: value.stack } : value
+      formatted = JSON.stringify(context, (key, item: unknown) =>
+        /^(password|passphrase|secret|token|access_token|refresh_token|id_token|api[_-]?key|authorization)$/i.test(key)
+          ? '[redacted]' : item) ?? String(value)
+    } catch {
+      formatted = '[unserializable context]'
+    }
+  }
+  return formatted.replace(/\n|\r/g, ' ')
 }
 
 function formatArgs(
@@ -32,7 +44,7 @@ function formatArgs(
   module: string,
   msgOrObj: unknown,
   ...rest: unknown[]
-): unknown[] {
+): string[] {
   const prefix = `[${level.toUpperCase()}] ${module.replace(/\n|\r/g, ' ')}:`
   return [prefix, safeLogValue(msgOrObj), ...rest.map(safeLogValue)]
 }

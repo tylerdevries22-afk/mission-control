@@ -21,7 +21,32 @@ describe('client logger', () => {
     const { createClientLogger } = await import('../client-logger')
     const context = { status: 503, operation: 'gateway' }
     createClientLogger('gateway').warn(context, 'retry\r\nlater')
-    expect(output).toHaveBeenCalledWith('[WARN] gateway:', context, 'retry  later')
+    expect(output).toHaveBeenCalledWith('[WARN] gateway:', JSON.stringify(context), 'retry  later')
+    expect(JSON.parse(output.mock.calls[0][1])).toEqual(context)
+  })
+
+  it('redacts credential fields in structured context without modifying input', async () => {
+    const output = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { createClientLogger } = await import('../client-logger')
+    const context = { status: 403, token: 'private-token', nested: { password: 'private-password' } }
+    createClientLogger('gateway').error(context, 'denied')
+    const rendered = String(output.mock.calls[0][1])
+    expect(JSON.parse(rendered)).toEqual({ status: 403, token: '[redacted]', nested: { password: '[redacted]' } })
+    expect(context.token).toBe('private-token')
+    expect(context.nested.password).toBe('private-password')
+  })
+
+  it('bounds error and circular context without exposing raw objects', async () => {
+    const output = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { createClientLogger } = await import('../client-logger')
+    const cycle: Record<string, unknown> = {}
+    cycle.self = cycle
+    createClientLogger('gateway').warn(new Error('line\nforged'))
+    const rendered = String(output.mock.calls[0][1])
+    expect(rendered).not.toMatch(/[\r\n]/)
+    expect(JSON.parse(rendered).message).toBe('line\nforged')
+    createClientLogger('gateway').warn(cycle)
+    expect(output.mock.calls[1][1]).toBe('[unserializable context]')
   })
 
   it('suppresses production debug and info while keeping warnings and errors', async () => {
