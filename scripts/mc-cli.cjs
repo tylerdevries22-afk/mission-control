@@ -9,8 +9,9 @@
 */
 
 const fs = require('node:fs');
-const path = require('node:path');
-const os = require('node:os');
+const { loadProfile, saveProfile } = require('./mc-cli-profile.cjs');
+const { httpRequest, publicResult } = require('./mc-cli-http.cjs');
+const { desktopLogin } = require('./mc-cli-desktop-login.cjs');
 const { normalizeMissionControlBaseUrl } = require('./mc-base-url.cjs');
 
 const EXIT = {
@@ -49,7 +50,7 @@ Usage:
   mc <group> <action> [--flags]
 
 Groups:
-  auth         login/logout/whoami
+  auth         login/desktop-login/logout/whoami
   agents       list/get/create/update/delete/wake/diagnostics/heartbeat
                memory get|set|clear / soul get|set|templates / attribution
   tasks        list/get/create/update/delete/queue
@@ -73,6 +74,7 @@ Common flags:
   --help                show help
 
 Examples:
+  mc auth desktop-login --url http://127.0.0.1:4000 --expected-user your-username
   mc agents list --json
   mc agents memory get --id 5
   mc agents soul set --id 5 --template operator
@@ -86,48 +88,6 @@ Examples:
   mc events watch --types agent,task
   mc raw --method GET --path /api/status --json
 `);
-}
-
-function profilePath(name) {
-  return path.join(os.homedir(), '.mission-control', 'profiles', `${name}.json`);
-}
-
-function ensureParentDir(filePath) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-}
-
-function loadProfile(name) {
-  const p = profilePath(name);
-  if (!fs.existsSync(p)) {
-    return {
-      name,
-      url: process.env.MC_URL || 'http://127.0.0.1:3000',
-      apiKey: process.env.MC_API_KEY || '',
-      cookie: process.env.MC_COOKIE || '',
-    };
-  }
-  try {
-    const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-    return {
-      name,
-      url: parsed.url || process.env.MC_URL || 'http://127.0.0.1:3000',
-      apiKey: parsed.apiKey || process.env.MC_API_KEY || '',
-      cookie: parsed.cookie || process.env.MC_COOKIE || '',
-    };
-  } catch {
-    return {
-      name,
-      url: process.env.MC_URL || 'http://127.0.0.1:3000',
-      apiKey: process.env.MC_API_KEY || '',
-      cookie: process.env.MC_COOKIE || '',
-    };
-  }
-}
-
-function saveProfile(profile) {
-  const p = profilePath(profile.name);
-  ensureParentDir(p);
-  fs.writeFileSync(p, `${JSON.stringify(profile, null, 2)}\n`, 'utf8');
 }
 
 function mapStatusToExit(status) {
@@ -154,51 +114,6 @@ function optional(flags, key, fallback) {
 function bodyFromFlags(flags) {
   if (flags.body) return JSON.parse(String(flags.body));
   return undefined;
-}
-
-async function httpRequest({ baseUrl, apiKey, cookie, method, route, body, timeoutMs = 20000 }) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const headers = { Accept: 'application/json' };
-  if (apiKey) headers['x-api-key'] = apiKey;
-  if (cookie) headers['Cookie'] = cookie;
-  let payload;
-  if (body !== undefined) {
-    headers['Content-Type'] = 'application/json';
-    payload = JSON.stringify(body);
-  }
-  const url = `${baseUrl}${route.startsWith('/') ? route : `/${route}`}`;
-
-  try {
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: payload,
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    const text = await res.text();
-    let data;
-    try {
-      data = text ? JSON.parse(text) : {};
-    } catch {
-      data = { raw: text };
-    }
-    return {
-      ok: res.ok,
-      status: res.status,
-      data,
-      setCookie: res.headers.get('set-cookie') || '',
-      url,
-      method,
-    };
-  } catch (err) {
-    clearTimeout(timer);
-    if (String(err?.name || '') === 'AbortError') {
-      return { ok: false, status: 0, data: { error: `Request timeout after ${timeoutMs}ms` }, timeout: true, url, method };
-    }
-    return { ok: false, status: 0, data: { error: err?.message || 'Network error' }, network: true, url, method };
-  }
 }
 
 async function sseStream({ baseUrl, apiKey, cookie, route, timeoutMs, onEvent, onError }) {
@@ -267,7 +182,7 @@ async function sseStream({ baseUrl, apiKey, cookie, route, timeoutMs, onEvent, o
 
 function printResult(result, asJson) {
   if (asJson) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(publicResult(result), null, 2));
     return;
   }
   if (result.ok) {
@@ -284,11 +199,30 @@ function printResult(result, asJson) {
 // --- Command handlers ---
 // Each returns { method, route, body? } or handles the request directly and returns null.
 
+function stdinPassword() {
+  const chunks = [];
+  const buffer = Buffer.alloc(4096);
+  let size = 0;
+  for (;;) {
+    const count = fs.readSync(0, buffer, 0, buffer.length, null);
+    if (!count) break;
+    size += count;
+    if (size > 65538) throw new Error('Password input is empty or too large');
+    chunks.push(Buffer.from(buffer.subarray(0, count)));
+  }
+  return Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/, '');
+}
+
 const commands = {
   auth: {
+    'desktop-login': (flags, ctx) => desktopLogin(ctx, flags),
     async login(flags, ctx) {
       const username = required(flags, 'username');
-      const password = required(flags, 'password');
+      if (flags['password-stdin'] && flags.password) throw new Error('Use only one password input');
+      const password = flags['password-stdin']
+        ? stdinPassword() : required(flags, 'password');
+      if (!password || Buffer.byteLength(password) > 65536) throw new Error('Password input is empty or too large');
+      if (flags.password) console.error('Prefer desktop-login or --password-stdin; --password is visible in process arguments.');
       const result = await httpRequest({
         baseUrl: ctx.baseUrl,
         method: 'POST',
@@ -642,7 +576,9 @@ async function run() {
 
   const asJson = Boolean(parsed.flags.json);
   const profileName = String(parsed.flags.profile || 'default');
-  const profile = loadProfile(profileName);
+  let profile;
+  try { profile = loadProfile(profileName); }
+  catch (error) { console.error(error.message); process.exit(EXIT.USAGE); }
   const baseUrlInput = parsed.flags.url ? String(parsed.flags.url) : profile.url;
   const apiKey = parsed.flags['api-key'] ? String(parsed.flags['api-key']) : profile.apiKey;
   const timeoutMs = Number(parsed.flags['timeout-ms'] || 20000);

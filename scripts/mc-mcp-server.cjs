@@ -12,22 +12,16 @@
    MC_COOKIE    Session cookie (alternative auth)
 */
 
-const fs = require('node:fs');
-const path = require('node:path');
-const os = require('node:os');
 const { normalizeMissionControlBaseUrl } = require('./mc-base-url.cjs');
+const { loadProfile } = require('./mc-cli-profile.cjs');
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
 function loadConfig() {
-  // Try profile first, then env vars
-  const profilePath = path.join(os.homedir(), '.mission-control', 'profiles', 'default.json');
-  let profile = {};
-  try {
-    profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
-  } catch { /* no profile */ }
+  // Unsafe or corrupted profile storage must fail closed, never silently fall back.
+  const profile = loadProfile('default');
 
   return {
     baseUrl: normalizeMissionControlBaseUrl(

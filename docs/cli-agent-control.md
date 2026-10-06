@@ -31,9 +31,31 @@ node scripts/mc-cli.cjs sessions control --id <session-id> --action terminate
 ## Command groups
 
 ### auth
-- login --username --password
+- desktop-login --url http://127.0.0.1:4000 --expected-user <actual-account-username>
+- login --username <username> --password-stdin
 - logout
 - whoami
+
+If the desktop app is already unlocked, run `auth desktop-login`. It prints a
+five-minute, single-use code. Enter it in the app under **Settings > Browser access**
+and approve it. The CLI verifies the actual username through `/api/auth/me` before
+saving its session. The app's display name can differ from that username.
+Use the port of the existing backend; do not start a second server to sign in.
+
+The request possession token and session cookie never appear in command arguments
+or normal CLI JSON output. Profile directories use mode 700 and profiles use mode
+600 with atomic replacement; symlinked, foreign-owned or corrupt storage fails
+closed. Desktop sign-in keeps a private backup when replacing an existing profile.
+The shared MCP/Fly bridge reads that same profile. This is an ordinary session with
+the approving account's existing permissions and lifetime, not a password reset or
+a new global API key. Session expiry or revocation requires fresh sign-in.
+
+Legacy `--password` remains compatible but exposes the password in process
+arguments. Prefer the desktop flow or standard input. GET network failures retry
+once; consuming login requests and other mutations are never automatically replayed.
+Every HTTP request keeps its timeout active while reading the response body and
+rejects redirects. Verify `auth whoami` and Fly status separately from an actual
+worker's successful command result and confirmed cleanup.
 
 ### agents
 - list
