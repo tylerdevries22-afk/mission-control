@@ -1,3 +1,5 @@
+import type { FlyFailureKind } from './fly-error-diagnostics'
+
 export interface FlyMachinesClientOptions {
   apiToken?: string
   appName?: string
@@ -22,10 +24,15 @@ export interface FlyMachineResponse {
 }
 
 export class FlyMachinesError extends Error {
-  constructor(message: string, readonly status?: number, readonly retryAfterMs?: number) {
+  readonly diagnosticFamily = 'fly_machines'
+  constructor(message: string, readonly status?: number, readonly retryAfterMs?: number, readonly diagnosticKind: FlyFailureKind = 'unknown') {
     super(message)
     this.name = 'FlyMachinesError'
   }
+}
+
+function isFlyMachinesError(error: unknown): error is FlyMachinesError {
+  try { return error instanceof FlyMachinesError } catch { return false }
 }
 
 function enabled(options: FlyMachinesClientOptions): options is FlyMachinesClientOptions & { apiToken: string; appName: string } {
@@ -112,12 +119,13 @@ export class FlyMachinesClient {
   }
 
   private async request<T>(path: string, method: string, body?: unknown, retries = this.retries): Promise<T> {
-    if (!enabled(this.options)) throw new FlyMachinesError('Fly Machines is not configured.')
+    if (!enabled(this.options)) throw new FlyMachinesError('Fly Machines is not configured.', undefined, undefined, 'configuration')
     const url = `${this.baseUrl}/apps/${encodeURIComponent(this.options.appName)}${path}`
     let lastError: FlyMachinesError | undefined
     for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = new AbortController()
+      let phase: FlyFailureKind = 'transport'
       try {
-        const controller = new AbortController()
         const timer = setTimeout(() => controller.abort(), this.timeoutMs)
         try {
           const response = await this.fetchImpl(url, {
@@ -132,16 +140,19 @@ export class FlyMachinesClient {
             const seconds = header === null ? NaN : Number(header)
             const delay = Number.isFinite(seconds) ? seconds * 1000 : header ? Date.parse(header) - Date.now() : NaN
             throw new FlyMachinesError(`Fly Machines request failed (${response.status}).`, response.status,
-              Number.isFinite(delay) ? Math.max(0, Math.min(10_000, delay)) : undefined)
+              Number.isFinite(delay) ? Math.max(0, Math.min(10_000, delay)) : undefined, 'http')
           }
+          phase = 'body_read'
           const text = await response.text()
           if (!text) return undefined as T
+          phase = 'invalid_response'
           return JSON.parse(text) as T
         } finally {
           clearTimeout(timer)
         }
       } catch (error) {
-        lastError = error instanceof FlyMachinesError ? error : new FlyMachinesError('Fly Machines request failed.')
+        lastError = isFlyMachinesError(error) ? error : new FlyMachinesError(
+          'Fly Machines request failed.', undefined, undefined, controller.signal.aborted ? 'timeout' : phase)
         if (attempt === retries || !retryable(lastError.status)) throw lastError
         await this.sleep(Math.max(lastError.retryAfterMs ?? 0, Math.min(1_000, 100 * 2 ** attempt)))
       }

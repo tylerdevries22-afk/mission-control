@@ -1,3 +1,4 @@
+import { safeFlyErrorDiagnostic } from './fly-error-diagnostics'
 import { FLY_LAUNCH_BATCH_SIZE, flyLaunchRegions, flyWorkerLimit } from './fly-capacity'
 import type Database from 'better-sqlite3'
 import { FlyMachinesClient, FlyMachinesError, type FlyMachineResponse } from './fly-machines-client'
@@ -63,7 +64,7 @@ async function observeActive(db: Database.Database, client: FlyMachinesClient, a
       assertOwned()
       await Promise.all(jobs.slice(index, index + 4).map(async job => {
         try { await pollJob(db, scoped, job, machines) }
-        catch (error) { logger.warn({ jobId: job.id, error: error instanceof Error ? error.name : 'unknown' }, 'Fly observation/cleanup will retry') }
+        catch (error) { logger.warn({ jobId: job.id, ...safeFlyErrorDiagnostic(error) }, 'Fly observation/cleanup will retry') }
       }))
     }
   }
@@ -108,7 +109,7 @@ export async function reconcileFlyWorkers(db: Database.Database, client = FlyMac
     }
     return { ok: true, message: `Observed ${active.length} jobs; admitted ${launched} launches` }
   } catch (error) {
-    logger.warn({ error: error instanceof Error ? error.name : 'unknown' }, 'Fly unavailable; remote ownership retained')
+    logger.warn({ ...safeFlyErrorDiagnostic(error) }, 'Fly unavailable; remote ownership retained')
     return { ok: false, message: 'Fly unavailable; queued work and reservations retained' }
   } finally {
     lease.release()
