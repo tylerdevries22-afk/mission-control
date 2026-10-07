@@ -1,7 +1,10 @@
 export function packageFailure(label, code, output, env = process.env) {
   const base = `${label} failed (exit ${code ?? 'signal'})`
   if (!/^(Dependency setup|Browser setup|Verification )/.test(label)) return new Error(base)
-  let detail = output.split('\n').filter(line => /ERR[!_ ]|error:|not found|EACCES|EAI_AGAIN|fatal:/i.test(line)).slice(-4).join(' ').slice(-1500)
+  const lines = output.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '').split('\n')
+  const summaries = lines.filter(line => /\bFAIL\b|AssertionError\b/i.test(line)).slice(-2)
+  let detail = (summaries.length ? summaries : lines.filter(line => /ERR[!_ ]|error:|not found|EACCES|EAI_AGAIN|fatal:/i.test(line)).slice(-4))
+    .map(line => line.trim().slice(0, 170)).join(' ').slice(-1500)
   for (const [name, value] of Object.entries(env)) {
     if (/TOKEN|KEY|PASSWORD|SECRET|AUTH/i.test(name) && value?.length >= 8) detail = detail.split(value).join('[redacted]')
   }
