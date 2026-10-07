@@ -8,9 +8,9 @@ test('dependency failure includes useful bounded diagnostics', () => {
   assert.ok(packageFailure('Dependency setup', 1, 'error: ' + 'x'.repeat(10000), {}).message.length < 450)
 })
 test('Vitest failure summaries survive ANSI styling and retain the failed test', () => {
-  const output = '\u001b[31m FAIL \u001b[0m workers/tests/sample.test.mjs > rejects invalid input\n  AssertionError: expected invalid input to be rejected'
+  const output = '\u001b[31m FAIL  \u001b[0m workers/tests/sample.test.mjs > rejects invalid input\n  AssertionError: expected invalid input to be rejected'
   const error = packageFailure('Verification test', 1, output, {})
-  assert.match(error.message, /FAIL workers\/tests\/sample\.test\.mjs/)
+  assert.match(error.message, /FAIL\s+workers\/tests\/sample\.test\.mjs/)
   assert.match(error.message, /AssertionError/)
 })
 test('assertion diagnostics keep secret, token, and URL redaction and stay bounded', () => {
