@@ -11,13 +11,16 @@ export interface FlyMachineSpec {
   hourlyCostUsd: number
 }
 
+const largeMemoryMb = ['9216', '12288'].includes(process.env.MC_FLY_LARGE_MEMORY_MB ?? '')
+  ? Number(process.env.MC_FLY_LARGE_MEMORY_MB) : 8192
+
 export const FLY_WORKER_SPECS: Record<FlyWorkerSize, FlyMachineSpec> = {
   'core-small': { size: 'core-small', workerClass: 'core', cpuKind: 'shared', cpus: 1, memoryMb: 1024, hourlyCostUsd: 0 },
   'core-standard': { size: 'core-standard', workerClass: 'core', cpuKind: 'shared', cpus: 1, memoryMb: 2048, hourlyCostUsd: 0 },
   'core-performance': { size: 'core-performance', workerClass: 'core', cpuKind: 'performance', cpus: 2, memoryMb: 4096, hourlyCostUsd: 0 },
-  'core-xlarge': { size: 'core-xlarge', workerClass: 'core', cpuKind: 'performance', cpus: 4, memoryMb: process.env.MC_FLY_LARGE_MEMORY_MB === '9216' ? 9216 : 8192, hourlyCostUsd: 0 },
+  'core-xlarge': { size: 'core-xlarge', workerClass: 'core', cpuKind: 'performance', cpus: 4, memoryMb: largeMemoryMb, hourlyCostUsd: 0 },
   'browser-standard': { size: 'browser-standard', workerClass: 'browser', cpuKind: 'performance', cpus: 2, memoryMb: 4096, hourlyCostUsd: 0 },
-  'browser-large': { size: 'browser-large', workerClass: 'browser', cpuKind: 'performance', cpus: 4, memoryMb: process.env.MC_FLY_LARGE_MEMORY_MB === '9216' ? 9216 : 8192, hourlyCostUsd: 0 },
+  'browser-large': { size: 'browser-large', workerClass: 'browser', cpuKind: 'performance', cpus: 4, memoryMb: largeMemoryMb, hourlyCostUsd: 0 },
 }
 
 export interface FlyJobProfile {
@@ -61,10 +64,12 @@ function percentile(values: number[], ratio: number): number {
 
 export function recommendFlyWorkerSize(profile: FlyJobProfile, history: FlyUsageSample[]): FlyMachineSpec {
   const vcpuP95 = percentile(history.map(sample => sample.cpuPercent / 100 * finite(sample.cpus, 1)), 0.95)
-  const memoryP95 = percentile(history.map(sample => sample.memoryMb), 0.95)
+  // Admission checks every measured peak. Selection must use the same memory bound,
+  // otherwise a p95-selected small class rejects an outlier that a larger class fits.
+  const memoryPeak = Math.max(0, ...history.map(sample => finite(sample.memoryMb)))
   // A job that runs CPU-bound for ten minutes needs a core to itself even without history.
   const vcpu = Math.max(vcpuP95, finite(profile.estimatedCpuSeconds) > 600 ? 1 : 0) * HEADROOM
-  const memory = Math.max(memoryP95, finite(profile.estimatedMemoryMb)) * HEADROOM
+  const memory = Math.max(memoryPeak, finite(profile.estimatedMemoryMb)) * HEADROOM
 
   if (profile.requiresBrowser) {
     return memory > 4096 || vcpu > FLY_WORKER_SPECS['browser-standard'].cpus
