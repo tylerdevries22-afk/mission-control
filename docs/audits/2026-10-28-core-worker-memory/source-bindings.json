@@ -1,0 +1,48 @@
+{
+  "recorded_at": "2026-10-28T20:38:14.402562+00:00",
+  "base_sha": "ce0c73bc40a66bd3d98a1e1c1e70fdce423e02bf",
+  "branch": "fix/onboarding-worker-headroom",
+  "human_authority": "Approve 16 GB and PR #20 work",
+  "owner_reconciliation": "Initial tracked tree clean; no other process cwd in exact worktree except owned inspection pipeline; no existing managed handoff ledger/receiver lock found. Direct human takeover; no account-context transfer claimed.",
+  "files": [
+    {
+      "path": "src/lib/fly-workers.ts",
+      "before_sha256": "30700728c180d25fa8e7fb2e35edde72ac73f4ea828a1d8e89062349b7ab5e72",
+      "after_sha256": "f5f4eae802b44d45cea008cd75e1dd3df04a7dbdf370f40cfdb55b0a3bdd530f",
+      "kind": "production"
+    },
+    {
+      "path": "src/lib/fly-pricing.ts",
+      "before_sha256": "bd5f2aca79e186df2bd7524f083e80256cec7872489299712c6ed310a24e3efb",
+      "after_sha256": "76b4082e1fdcea6bbba8d445d798824e69552c84b0074133e12c3ba49a0ac495",
+      "kind": "production"
+    },
+    {
+      "path": "src/lib/__tests__/fly-core-memory-override.test.ts",
+      "before_sha256": null,
+      "after_sha256": "81cea16406543bd7270a7bb0fb90ad119bd0aa583e55dc11fdc5a7a83a821a62",
+      "kind": "test"
+    },
+    {
+      "path": "src/lib/__tests__/fly-core-memory-reservation.test.ts",
+      "before_sha256": null,
+      "after_sha256": "28e4d58fffe61fa9d2af6953ccb5e41e77dbe62d2ec6d9643d55ab8971e43860",
+      "kind": "test"
+    },
+    {
+      "path": ".env.example",
+      "before_sha256": "1307cfe4dbf47777afedf6eb97a6c0df33378b6ede80812630b6c3996477ced9",
+      "after_sha256": "ffba28733f1dd94867273916d5c05a4ca64f2d00b58025288f78d9bd25026e46",
+      "kind": "configuration_example"
+    }
+  ],
+  "source_only": true,
+  "runtime_changed": false,
+  "checks_executed": false,
+  "limits": {
+    "monthly_usd": 65.5,
+    "daily_usd": 3,
+    "per_job_usd": 0.25,
+    "global_workers": 25
+  }
+}

@@ -1,0 +1,210 @@
+[
+  {
+    "name": "action-pins",
+    "command": [
+      "python3",
+      "scripts/check-workflow-action-pins.py"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 0.039,
+    "source_unchanged": true,
+    "log_sha256": "3d63a503635ddc3e56928fdff18e3c29c39f22c5e944aa721d732ee912018223",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:52:12.110229+00:00"
+  },
+  {
+    "name": "api-parity",
+    "command": [
+      "node",
+      "scripts/check-api-contract-parity.mjs",
+      "--root",
+      ".",
+      "--openapi",
+      "openapi.json",
+      "--ignore-file",
+      "scripts/api-contract-parity.ignore"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 0.12,
+    "source_unchanged": true,
+    "log_sha256": "778429812ac51d56910d4ac874df41390da92678280b021e7651ebe338bad6b1",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:52:12.274276+00:00"
+  },
+  {
+    "name": "config-integrity-1",
+    "command": [
+      "bash",
+      "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory/.local/apple-wave280/config-integrity-1.sh"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 0.184,
+    "source_unchanged": true,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:52:12.500700+00:00"
+  },
+  {
+    "name": "config-integrity-2",
+    "command": [
+      "bash",
+      "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory/.local/apple-wave280/config-integrity-2.sh"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 0.039,
+    "source_unchanged": true,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:52:12.581227+00:00"
+  },
+  {
+    "name": "config-integrity-3",
+    "command": [
+      "bash",
+      "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory/.local/apple-wave280/config-integrity-3.sh"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 0.04,
+    "source_unchanged": true,
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:52:12.664163+00:00"
+  },
+  {
+    "name": "security-audit",
+    "command": [
+      "bash",
+      "scripts/security-audit.test.sh"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 13.369,
+    "source_unchanged": true,
+    "log_sha256": "9b3388c36a82d7efdc68f0a5bcd3bb87ce56e58455ae56210370452a3ddf043c",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:52:26.090171+00:00"
+  },
+  {
+    "name": "load-env",
+    "command": [
+      "bash",
+      "scripts/load-env.test.sh"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 0.335,
+    "source_unchanged": true,
+    "log_sha256": "73beaaf971a33b75176272589c86971d0700515dc3722ef8b0efa6da182489dd",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:52:26.469671+00:00"
+  },
+  {
+    "name": "process-title",
+    "command": [
+      "bash",
+      "scripts/process-title.test.sh"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 1.077,
+    "source_unchanged": true,
+    "log_sha256": "1c32b854b59a38d8269fee40ec0fa8091c5238c1aefbc40ff989870f4373092e",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:52:27.586030+00:00"
+  },
+  {
+    "name": "reap-controller",
+    "command": [
+      "bash",
+      "scripts/reap-controller.test.sh"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 1,
+    "timed_out": false,
+    "duration_seconds": 52.569,
+    "source_unchanged": true,
+    "log_sha256": "09c9b978340a0d670ce1d9d71efdc45629e8ed14be7c97746f2c937eb4478c03",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:53:20.218599+00:00"
+  },
+  {
+    "name": "doppler-runtime",
+    "command": [
+      "bash",
+      "scripts/doppler-runtime.test.sh"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 0.04,
+    "source_unchanged": true,
+    "log_sha256": "576c01ca126a71a1fef44ffb26c10221f6bfbac8bd5321abe2eecb16a1d01beb",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:53:20.301139+00:00"
+  },
+  {
+    "name": "desktop-contracts",
+    "command": [
+      "node",
+      "--test",
+      "src/app-paths.test.mjs",
+      "src/backend-window.test.mjs",
+      "src/desktop-auth-core.test.mjs",
+      "src/desktop-auth-store.test.mjs",
+      "src/desktop-login.test.mjs",
+      "src/desktop-navigation.test.mjs",
+      "src/ensure-server.test.mjs",
+      "src/network.test.mjs",
+      "src/origin.test.mjs",
+      "src/request-policy.test.mjs",
+      "src/service-plan.test.mjs",
+      "src/window-policy.test.mjs",
+      "tests/configure-desktop-auth.test.mjs",
+      "tests/install-app.test.mjs",
+      "tests/packaging.test.mjs"
+    ],
+    "cwd": "/Users/tylerdevries/Dev/mission-control/.claude/worktrees/onboarding-worker-memory/apps/desktop",
+    "source_sha": "e44373577f7be2e026ba888bf962d42fb2d8b886",
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_seconds": 0.282,
+    "source_unchanged": true,
+    "log_sha256": "7ad2621f65c7107399834320930ca9b08d64173bcb4f8af9156564025bf55c8b",
+    "has_skipping_notice": false,
+    "local_only": true,
+    "recorded_at": "2026-10-28T21:53:20.622145+00:00"
+  }
+]

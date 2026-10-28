@@ -11,7 +11,10 @@ export function pricedFlyJob(input: Pick<FlySubmission, 'setup' | 'checks' | 'ti
     requiresBuild: input.checks.includes('build'),
     estimatedMemoryMb: input.checks.includes('build') ? 6144 : undefined,
   }, history)
-  const envRate = Number(process.env[`MC_FLY_${spec.size.replaceAll('-', '_').toUpperCase()}_HOURLY_USD`])
+  const rateKey = spec.size === 'core-xlarge' && spec.memoryMb === 16384
+    ? 'MC_FLY_CORE_XLARGE_16384_HOURLY_USD'
+    : `MC_FLY_${spec.size.replaceAll('-', '_').toUpperCase()}_HOURLY_USD`
+  const envRate = Number(process.env[rateKey])
   const fallbackRate = spec.size === 'core-xlarge' && spec.memoryMb === 8192
     ? Number(process.env.MC_FLY_CORE_PERFORMANCE_HOURLY_USD) * 2
     : 0

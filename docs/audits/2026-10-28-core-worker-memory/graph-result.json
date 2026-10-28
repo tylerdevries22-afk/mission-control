@@ -1,0 +1,8 @@
+{
+  "command": "graphify update .",
+  "recorded_at": "2026-10-28T20:39:10.785656+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "duration_seconds": 18.182,
+  "scope": "Source graph update only, not canonical test/build verification"
+}
