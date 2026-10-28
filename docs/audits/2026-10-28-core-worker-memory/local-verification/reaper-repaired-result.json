@@ -1,0 +1,9 @@
+{
+  "command": "bash scripts/reap-controller.test.sh",
+  "exit_code": 0,
+  "duration_seconds": 77.031,
+  "original_test_sha256": "fae086dcf253e2ac3c5e40ef04714713335c9c2c1a865aab376b74a553badb52",
+  "repaired_source_sha256": "82710c6e9f21812db24e6cb631b5fb44680a3a08b145713e88a82df0e14454fb",
+  "local_mac": true,
+  "source_not_activated": true
+}

@@ -1,0 +1,7 @@
+{
+  "check": "graphify update .",
+  "placement": "local",
+  "state": "passed",
+  "exit_code": 0,
+  "elapsed_seconds": 8.786
+}

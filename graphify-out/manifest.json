@@ -606,9 +606,9 @@
     "semantic_hash": "3ebdf78a0bd4483d4ac10e85c777a481"
   },
   "scripts/start-standalone.sh": {
-    "mtime": 1792513672.9984868,
-    "seen": 1793219950.394041,
-    "ast_hash": "d952821c4d844e3dbb5bb648a890f154",
+    "mtime": 1793224852.4072664,
+    "seen": 1793226614.718464,
+    "ast_hash": "a94c150f95f028ba9ef3ee064cf5b2f8",
     "semantic_hash": ""
   },
   "scripts/station-doctor.sh": {
@@ -8589,6 +8589,60 @@
     "mtime": 1792513657.6986034,
     "seen": 1793219950.394593,
     "ast_hash": "598101794d70c82ea29a35959b3cc358",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/graph-result.json": {
+    "mtime": 1793220062.590641,
+    "seen": 1793226614.718428,
+    "ast_hash": "39ebf84cf6c98153d9500e0de775972e",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/local-verification/local-check-results.json": {
+    "mtime": 1793225953.640038,
+    "seen": 1793226614.71843,
+    "ast_hash": "b66598edf4ffd96e55aeeb309f5a1b60",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/local-verification/reaper-repaired-result.json": {
+    "mtime": 1793225953.6403959,
+    "seen": 1793226614.718431,
+    "ast_hash": "1388dd5c509b5857cb31a96cf30727ef",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/source-bindings.json": {
+    "mtime": 1793220062.5910394,
+    "seen": 1793226614.718431,
+    "ast_hash": "397e046515c580a29f8a8a888d1c1a93",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/README.md": {
+    "mtime": 1793220062.5913105,
+    "seen": 1793226614.719008,
+    "ast_hash": "0bdf8d62ffa682f3c25cd846247fa35c",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/independent-review.md": {
+    "mtime": 1793220062.588704,
+    "seen": 1793226614.719008,
+    "ast_hash": "3304d01f0f524b2082be28a16ccd526f",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/local-verification/README.md": {
+    "mtime": 1793225953.6410406,
+    "seen": 1793226614.719008,
+    "ast_hash": "e809b09ac6ac93c86b979e192af7a3db",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/local-verification/reaper-independent-review.md": {
+    "mtime": 1793225953.6409156,
+    "seen": 1793226614.719009,
+    "ast_hash": "a373b07c949f23f5c3045a75d9e8b825",
+    "semantic_hash": ""
+  },
+  "docs/audits/2026-10-28-core-worker-memory/official-pricing.md": {
+    "mtime": 1793220062.588,
+    "seen": 1793226614.719009,
+    "ast_hash": "2ff48c78429a10c3d4db1c0e1a33b61a",
     "semantic_hash": ""
   }
 }
