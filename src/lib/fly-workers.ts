@@ -11,14 +11,15 @@ export interface FlyMachineSpec {
   hourlyCostUsd: number
 }
 
-const largeMemoryMb = ['9216', '12288'].includes(process.env.MC_FLY_LARGE_MEMORY_MB ?? '')
-  ? Number(process.env.MC_FLY_LARGE_MEMORY_MB) : 8192
+const largeMemoryMb = process.env.MC_FLY_LARGE_MEMORY_MB === '9216' ? 9216 : 8192
+const coreLargeMemoryMb = process.env.MC_FLY_LARGE_MEMORY_MB === '12288' ? 12288 : largeMemoryMb
+const coreXlargeMemoryMb = process.env.MC_FLY_CORE_XLARGE_MEMORY_MB === '16384' ? 16384 : coreLargeMemoryMb
 
 export const FLY_WORKER_SPECS: Record<FlyWorkerSize, FlyMachineSpec> = {
   'core-small': { size: 'core-small', workerClass: 'core', cpuKind: 'shared', cpus: 1, memoryMb: 1024, hourlyCostUsd: 0 },
   'core-standard': { size: 'core-standard', workerClass: 'core', cpuKind: 'shared', cpus: 1, memoryMb: 2048, hourlyCostUsd: 0 },
   'core-performance': { size: 'core-performance', workerClass: 'core', cpuKind: 'performance', cpus: 2, memoryMb: 4096, hourlyCostUsd: 0 },
-  'core-xlarge': { size: 'core-xlarge', workerClass: 'core', cpuKind: 'performance', cpus: 4, memoryMb: largeMemoryMb, hourlyCostUsd: 0 },
+  'core-xlarge': { size: 'core-xlarge', workerClass: 'core', cpuKind: 'performance', cpus: 4, memoryMb: coreXlargeMemoryMb, hourlyCostUsd: 0 },
   'browser-standard': { size: 'browser-standard', workerClass: 'browser', cpuKind: 'performance', cpus: 2, memoryMb: 4096, hourlyCostUsd: 0 },
   'browser-large': { size: 'browser-large', workerClass: 'browser', cpuKind: 'performance', cpus: 4, memoryMb: largeMemoryMb, hourlyCostUsd: 0 },
 }
